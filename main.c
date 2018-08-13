@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <dirent.h>
 #include <errno.h>
@@ -27,7 +27,7 @@ bool is_current_or_parent(const char *name) {
 }
 
 int pbl_set_compare_strings(const void *l, const void *r) {
-    char *left = *(char**)l;
+    char *left = *(char **)l;
     char *right = *(char **)r;
     return strcmp(left, right);
 }
@@ -63,25 +63,27 @@ PblSet *find_files_in_packages() {
             char buf_line[USTR_SIZE_FIXED(512)];
             Ustr *line = USTR_SC_INIT_AUTO(buf_line, USTR_FALSE, 0);
 
-            printf("contents file: %s\n", ustr_cstr(contents_path));
-
             while (ustr_io_getline(&line, cfile)) {
                 size_t off = 0;
                 Ustr *type = NULL;
                 Ustr *path;
                 Ustr *result;
 
-                while ((result = ustr_split_spn_chrs(line, &off, " ", 1, NULL, 0))) {
+                while ((result = ustr_split_spn_chrs(
+                            line, &off, " ", 1, NULL, 0))) {
                     if (ustr_len(result) == 3) {
                         type = result;
                     } else if (ustr_cmp_prefix_cstr_eq(result, "/")) {
                         assert(type != NULL);
                         size_t off2 = 0;
-                        path = ustr_split_spn_chrs(result, &off2, "\n", 1, NULL, 0);
+                        path = ustr_split_spn_chrs(
+                            result, &off2, "\n", 1, NULL, 0);
 
                         int ret = pblSetAdd(set, (void *)ustr_cstr(path));
                         assert(ret >= 0);
-                        printf("add '%s' from line: '%s'\n", ustr_cstr(path), ustr_cstr(line));
+                        printf("add '%s' from line: '%s'\n",
+                               ustr_cstr(path),
+                               ustr_cstr(line));
 
                         if (ustr_cmp_cstr_eq(type, "obj") ||
                             ustr_cmp_cstr_eq(type, "sym")) {
@@ -190,7 +192,6 @@ int main(int argc, char *argv[]) {
     // printf("Applying general exceptions...\n");
 
     printf("Finding files on system...\n");
-
 
     const char *check_dirs[CHECK_DIRS_SIZE] = {
         "/bin",
