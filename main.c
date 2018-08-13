@@ -1,98 +1,232 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <pbl.h>
+#include <ustr.h>
+
+#define CHECK_DIRS_SIZE 9
 
 static const char *terminal_reset = "\e[0m";
 static const char *terminal_bold = "\e[1m";
 static const char *terminal_color_red = "\e[1;31m";
 
 static const char *installed_base = "/var/db/pkg";
+static const char *libmap = "lib64";
 
-bool _is_obj(char *s) {
-    return !strncmp(s, "obj", 3);
+bool is_current_or_parent(const char *name) {
+    return name[0] == '.' || (name[0] == '.' && name[1] == '.');
 }
 
-bool _is_dir(char *s) {
-    return !strncmp(s, "dir", 3);
+int pbl_set_compare_strings(const void *l, const void *r) {
+    char *left = *(char**)l;
+    char *right = *(char **)r;
+    return strcmp(left, right);
 }
 
-bool _is_sym(char *s) {
-    return !strncmp(s, "sym", 3);
-}
-
-bool maybe_hash(char c) {
-    return (c >= '0' && c >= '9') || (c >= 'a' && c <= 'f');
-}
-
-void find_files_in_packages() {
+PblSet *find_files_in_packages() {
     DIR *dirp = opendir(installed_base);
     struct dirent *cent, *pent;
-    char pdir_path[256] = "";
-    char contents_path[512] = "";
+    Ustr *pdir_path = USTR("");
+    Ustr *contents_path = USTR("");
+    PblSet *set = pblSetNewHashSet();
+    pblSetSetHashValueFunction(set, pblSetStringHashValue);
+    pblSetSetCompareFunction(set, &pbl_set_compare_strings);
 
     while ((cent = readdir(dirp))) {
-        if (!strncmp(".", cent->d_name, 1) || !strncmp("..", cent->d_name, 2)) {
+        if (is_current_or_parent(cent->d_name)) {
             continue;
         }
-        memset(&pdir_path, 0, 256);
-        sprintf(pdir_path, "%s/%s", installed_base, cent->d_name);
 
-        DIR *pdir = opendir(pdir_path);
+        ustr_set_fmt(&pdir_path, "%s/%s", installed_base, cent->d_name);
+
+        DIR *pdir = opendir(ustr_cstr(pdir_path));
         while ((pent = readdir(pdir))) {
-            if (!strncmp(".", pent->d_name, 1) || !strncmp("..", pent->d_name, 2)) {
+            if (is_current_or_parent(pent->d_name)) {
                 continue;
             }
 
-            memset(&contents_path, 0, 512);
-            sprintf(contents_path, "%s/%s/%s/CONTENTS", installed_base, cent->d_name, pent->d_name);
-            FILE *cfile = fopen(contents_path, "r");
-            printf("%s\n", contents_path);
+            ustr_set_fmt(&contents_path,
+                         "%s/%s/%s/CONTENTS",
+                         installed_base,
+                         cent->d_name,
+                         pent->d_name);
+            FILE *cfile = fopen(ustr_cstr(contents_path), "r");
+            char buf_line[USTR_SIZE_FIXED(512)];
+            Ustr *line = USTR_SC_INIT_AUTO(buf_line, USTR_FALSE, 0);
 
-            char line[512] = "";
-            char type[4] = "";
-            char path[509] = "";
-            while (fgets(line, 512, cfile)) {
-                memcpy(&type, &line, 3);
-                memset(&path, 0, 509);
-                char *path2 = line + 4;
-                unsigned int i = 0;
-                char c;
-                if (_is_obj(type)) {
-                    while ((c = path2[i])) {
-                        if (c == ' ' && maybe_hash(path2[i + 1]) && maybe_hash(path2[i + 2])) {
-                            printf("maybe hash? path = %s\n", path);
-                            break;
+            printf("contents file: %s\n", ustr_cstr(contents_path));
+
+            while (ustr_io_getline(&line, cfile)) {
+                size_t off = 0;
+                Ustr *type = NULL;
+                Ustr *path;
+                Ustr *result;
+
+                while ((result = ustr_split_spn_chrs(line, &off, " ", 1, NULL, 0))) {
+                    if (ustr_len(result) == 3) {
+                        type = result;
+                    } else if (ustr_cmp_prefix_cstr_eq(result, "/")) {
+                        assert(type != NULL);
+                        size_t off2 = 0;
+                        path = ustr_split_spn_chrs(result, &off2, "\n", 1, NULL, 0);
+
+                        int ret = pblSetAdd(set, (void *)ustr_cstr(path));
+                        assert(ret >= 0);
+                        printf("add '%s' from line: '%s'\n", ustr_cstr(path), ustr_cstr(line));
+
+                        if (ustr_cmp_cstr_eq(type, "obj") ||
+                            ustr_cmp_cstr_eq(type, "sym")) {
+                            if (ustr_cmp_suffix_cstr_eq(path, ".py")) {
+                                Ustr *py_compiled_type = ustr_dup(path);
+                                ustr_add_cstr(&py_compiled_type, "c");
+                                pblSetAdd(set,
+                                          (void *)ustr_cstr(py_compiled_type));
+                                py_compiled_type = ustr_dup(path);
+                                ustr_add_cstr(&py_compiled_type, "o");
+                                pblSetAdd(set,
+                                          (void *)ustr_cstr(py_compiled_type));
+                            }
                         }
-                        path[i] = c;
-                        i++;
+
+                        break;
                     }
-                    printf("path = %s\n", path);
-                } else if (_is_dir(type)) {
-                    printf("is_dir = %s\n", path);
-                    memcpy(&path, &path2, strlen(path2));
-                } else if (_is_sym(type)) {
-                    printf("is_sym = %s\n", path);
-                    memcpy(&path, &path2, strlen(path2));
+                }
+
+                // Required for the loop to continue
+                if (line != USTR(buf_line)) {
+                    ustr_sc_free2(&line,
+                                  USTR_SC_INIT_AUTO(buf_line, USTR_FALSE, 0));
                 }
             }
 
             fclose(cfile);
-
-            break;
         }
-        closedir(pdir);
 
-        break;
+        closedir(pdir);
     }
 
     closedir(dirp);
+
+    return set;
 }
 
-int main(int argc, char **argv) {
+static inline int strneq(const char *t, const char *u) {
+    return strcmp(t, u) != 0;
+}
+
+// void apply_lib_mapping(const PblSet *package_files) {
+//     PblIterator *it = pblSetIterator(package_files);
+//     char *file;
+//     while ((file = pblIteratorNext(it))) {
+//
+//         if (!pblIteratorHasNext(it)) {
+//             break;
+//         }
+//     }
+// }
+
+PblSet *findwalk(const char *path, const PblSet *package_files) {
+    PblSet *candidates = pblSetNewHashSet();
+    pblSetSetHashValueFunction(candidates, pblSetStringHashValue);
+    pblSetSetCompareFunction(candidates, &pbl_set_compare_strings);
+
+    DIR *dir = opendir(path);
+    struct dirent *cdir;
+    while ((cdir = readdir(dir))) {
+        if (is_current_or_parent(cdir->d_name)) {
+            continue;
+        }
+
+        Ustr *ce = ustr_dup_cstr(path);
+        ustr_add_fmt(&ce, "/%s", cdir->d_name);
+        const char *cen = ustr_cstr(ce);
+
+        // Whitelist check
+
+        // package_files check
+        if (!pblSetContains((PblSet *)package_files, (char *)cen)) {
+            pblSetAdd(candidates, (void *)cen);
+        }
+
+        // Continue if the entry is a directory
+        struct stat s;
+        lstat(cen, &s);
+        if (S_ISDIR(s.st_mode) && !S_ISLNK(s.st_mode)) {
+            PblSet *next = findwalk(cen, package_files);
+            pblSetAddAll(candidates, next);
+            pblSetFree(next);
+        }
+    }
+
+    closedir(dir);
+
+    return candidates;
+}
+
+int main(int argc, char *argv[]) {
+    (void)argc;
+    (void)argv;
+
     printf("Finding files contained in packages...\n");
-    find_files_in_packages();
+    PblSet *package_files = find_files_in_packages();
+
+    if (strneq(libmap, "lib64")) {
+        pblSetFree(package_files);
+
+        fprintf(stderr, "libmap option with value \"lib\" not supported.\n");
+
+        return 1;
+    }
+
+    // printf("Applying general exceptions...\n");
+
+    printf("Finding files on system...\n");
+
+
+    const char *check_dirs[CHECK_DIRS_SIZE] = {
+        "/bin",
+        "/etc",
+        "/lib",
+        "/lib32",
+        "/lib64",
+        "/opt",
+        "/sbin",
+        "/usr",
+        "/var",
+    };
+    PblSet *candidates;
+
+    for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
+        const char *dir = check_dirs[i];
+        struct stat s;
+        stat(dir, &s);
+        if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
+            continue;
+        }
+        candidates = findwalk(dir, package_files);
+
+        PblIterator *it = pblSetIterator(candidates);
+        char *file;
+        while ((file = pblIteratorNext(it))) {
+            // printf("%s\n", file);
+            if (!pblIteratorHasNext(it)) {
+                break;
+            }
+        }
+
+        pblSetFree(candidates);
+    }
+
+    pblSetFree(package_files);
+
     return 0;
 }
