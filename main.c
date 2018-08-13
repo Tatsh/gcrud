@@ -1,11 +1,12 @@
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -204,24 +205,22 @@ int main(int argc, char *argv[]) {
         "/usr",
         "/var",
     };
-    PblSet *candidates;
 
     for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
         const char *dir = check_dirs[i];
+
         struct stat s;
         stat(dir, &s);
         if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
             continue;
         }
-        candidates = findwalk(dir, package_files);
+
+        PblSet *candidates = findwalk(dir, package_files);
 
         PblIterator *it = pblSetIterator(candidates);
         char *file;
-        while ((file = pblIteratorNext(it))) {
+        while ((file = pblIteratorNext(it)) && pblIteratorHasNext(it)) {
             // printf("%s\n", file);
-            if (!pblIteratorHasNext(it)) {
-                break;
-            }
         }
 
         pblSetFree(candidates);
