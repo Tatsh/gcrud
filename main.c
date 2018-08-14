@@ -41,8 +41,8 @@ GHashTable *find_files_in_packages(const char *base) {
     DIR *dirp = opendir(base);
     assert(dirp);
     struct dirent *cent, *pent;
-    GHashTable *set =
-        g_hash_table_new_full((GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+    GHashTable *set = g_hash_table_new_full(
+        (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
     assert(set);
 
     while ((cent = readdir(dirp))) {
@@ -50,7 +50,8 @@ GHashTable *find_files_in_packages(const char *base) {
             continue;
         }
 
-        gchar *pdir_path = g_strdup_printf("%s/%s", installed_base, cent->d_name);
+        gchar *pdir_path =
+            g_strdup_printf("%s/%s", installed_base, cent->d_name);
         DIR *pdir = opendir(pdir_path);
         assert(pdir);
 
@@ -59,16 +60,19 @@ GHashTable *find_files_in_packages(const char *base) {
                 continue;
             }
 
-            gchar *cpath = g_strdup_printf("%s/%s/%s/CONTENTS", installed_base, cent->d_name, pent->d_name);
+            gchar *cpath = g_strdup_printf("%s/%s/%s/CONTENTS",
+                                           installed_base,
+                                           cent->d_name,
+                                           pent->d_name);
 
             gchar *line;
             GError *error = NULL;
-            GIOChannel *cfile =
-                g_io_channel_new_file(cpath, "r", &error);
+            GIOChannel *cfile = g_io_channel_new_file(cpath, "r", &error);
             GIOStatus status;
 
             while ((status = g_io_channel_read_line(
-                        cfile, &line, NULL, NULL, &error)) != G_IO_STATUS_EOF) {
+                        cfile, &line, NULL, NULL, &error)) !=
+                   G_IO_STATUS_EOF) {
                 assert(status == G_IO_STATUS_NORMAL);
                 gchar *type = g_strndup(line, 3);
                 assert(type[0] != '/');
@@ -126,9 +130,13 @@ void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
     }
 }
 
-GHashTable *findwalk(const char *path, const GHashTable *package_files, GDestroyNotify key_destroy_func) {
-    GHashTable *candidates =
-        g_hash_table_new_full((GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, key_destroy_func, NULL);
+GHashTable *findwalk(const char *path,
+                     const GHashTable *package_files,
+                     GDestroyNotify key_destroy_func) {
+    GHashTable *candidates = g_hash_table_new_full((GHashFunc)g_str_hash,
+                                                   (GEqualFunc)g_str_equal,
+                                                   key_destroy_func,
+                                                   NULL);
     assert(candidates != NULL);
 
     DIR *dir = opendir(path);
