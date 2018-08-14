@@ -43,7 +43,8 @@ GHashTable *find_files_in_packages(const char *base) {
     struct dirent *cent, *pent;
     GString *pdir_path = g_string_new(NULL);
     GString *contents_path = g_string_new(NULL);
-    GHashTable *set = g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
+    GHashTable *set =
+        g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
     assert(set);
 
     GString *s_obj = g_string_new("obj");
@@ -69,10 +70,12 @@ GHashTable *find_files_in_packages(const char *base) {
                             pent->d_name);
             GString *line = g_string_new(NULL);
             GError *error = NULL;
-            GIOChannel *cfile = g_io_channel_new_file(contents_path->str, "r", &error);
+            GIOChannel *cfile =
+                g_io_channel_new_file(contents_path->str, "r", &error);
             GIOStatus status;
 
-            while ((status = g_io_channel_read_line_string(cfile, line, NULL, &error)) != G_IO_STATUS_EOF) {
+            while ((status = g_io_channel_read_line_string(
+                        cfile, line, NULL, &error)) != G_IO_STATUS_EOF) {
                 assert(status == G_IO_STATUS_NORMAL);
                 GString *type = g_string_new(g_strndup(line->str, 3));
                 assert(type->str[0] != '/');
@@ -85,7 +88,8 @@ GHashTable *find_files_in_packages(const char *base) {
 
                 g_hash_table_add(set, path);
 
-                if (g_string_equal(s_obj, type) || g_string_equal(s_sym, type)) {
+                if (g_string_equal(s_obj, type) ||
+                    g_string_equal(s_sym, type)) {
                     GString *py_compiled_type = g_string_new(path->str);
                     g_string_append_c(py_compiled_type, 'c');
                     g_hash_table_add(set, py_compiled_type);
@@ -136,7 +140,8 @@ void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
 }
 
 GHashTable *findwalk(const char *path, const GHashTable *package_files) {
-    GHashTable *candidates = g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
+    GHashTable *candidates =
+        g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
     assert(candidates);
 
     DIR *dir = opendir(path);
@@ -186,7 +191,8 @@ int main(int argc, char *argv[]) {
     if (strneq(libmap, "lib64")) {
         g_hash_table_destroy(package_files);
 
-        fprintf(stderr, "libmap option with value \"lib\" not yet supported.\n");
+        fprintf(stderr,
+                "libmap option with value \"lib\" not yet supported.\n");
 
         return 1;
     }
@@ -200,41 +206,41 @@ int main(int argc, char *argv[]) {
 
     // printf("Applying general exceptions...\n");
 
-//     printf("Finding files on system...\n");
-//
-//     const char *check_dirs[CHECK_DIRS_SIZE] = {
-//         "/bin",
-//         "/etc",
-//         "/lib",
-//         "/lib32",
-//         "/lib64",
-//         "/opt",
-//         "/sbin",
-//         "/usr",
-//         "/var",
-//     };
+    //     printf("Finding files on system...\n");
+    //
+    //     const char *check_dirs[CHECK_DIRS_SIZE] = {
+    //         "/bin",
+    //         "/etc",
+    //         "/lib",
+    //         "/lib32",
+    //         "/lib64",
+    //         "/opt",
+    //         "/sbin",
+    //         "/usr",
+    //         "/var",
+    //     };
 
-//     for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
-//         const char *dir = check_dirs[i];
-//
-//         struct stat s;
-//         stat(dir, &s);
-//         if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
-//             continue;
-//         }
-//
-//         GHashTable *candidates = findwalk(dir, package_files);
-//         assert(candidates);
-//
-//         GHashTableIter iter;
-//         g_hash_table_iter_init(&iter, candidates);
-//         gpointer file, value;
-//         while (g_hash_table_iter_next(&iter, &file, &value)) {
-//             printf("%d: %s\n", __LINE__, ((GString *)file)->str);
-//         }
-//
-//         g_hash_table_destroy(candidates);
-//     }
+    //     for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
+    //         const char *dir = check_dirs[i];
+    //
+    //         struct stat s;
+    //         stat(dir, &s);
+    //         if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
+    //             continue;
+    //         }
+    //
+    //         GHashTable *candidates = findwalk(dir, package_files);
+    //         assert(candidates);
+    //
+    //         GHashTableIter iter;
+    //         g_hash_table_iter_init(&iter, candidates);
+    //         gpointer file, value;
+    //         while (g_hash_table_iter_next(&iter, &file, &value)) {
+    //             printf("%d: %s\n", __LINE__, ((GString *)file)->str);
+    //         }
+    //
+    //         g_hash_table_destroy(candidates);
+    //     }
 
     g_hash_table_destroy(package_files);
 
