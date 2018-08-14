@@ -1,19 +1,11 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 project(gcruft2)
 
-find_library(
-    USTR_LIB
-    ustr
-)
-if(NOT USTR_LIB)
-    message(FATAL_ERROR "Need ustr")
-endif()
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/helper/")
+find_package(GLIB2 REQUIRED)
 
-
-include_directories(${CMAKE_SOURCE_DIR}/pbl/src/src)
 add_executable(gcruft2 main.c)
-target_link_libraries(gcruft2 ${USTR_LIB})
-# Temporary
-target_link_libraries(gcruft2 ${CMAKE_SOURCE_DIR}/pbl/src/src/libpbl.a)
+target_include_directories(gcruft2 PRIVATE ${GLIB_INCLUDE_DIRS})
+target_link_libraries(gcruft2 ${GLIB_LIBRARIES})
 
 install(TARGETS gcruft2 RUNTIME DESTINATION bin)

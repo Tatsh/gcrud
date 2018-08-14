@@ -11,8 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <pbl.h>
-#include <ustr.h>
+#include <glib-2.0/glib.h>
 
 #define CHECK_DIRS_SIZE 9
 
@@ -23,106 +22,95 @@ static const char *terminal_color_red = "\e[1;31m";
 static const char *installed_base = "/var/db/pkg";
 static const char *libmap = "lib64";
 
+bool is_current_or_parent(const char *)
+    __attribute__((nonnull, warn_unused_result));
+int pbl_set_compare_strings(const void *, const void *)
+    __attribute__((nonnull, warn_unused_result));
+int strneq(const char *, const char *)
+    __attribute__((nonnull, warn_unused_result));
+GHashTable *find_files_in_packages(const char *)
+    __attribute__((nonnull, returns_nonnull, warn_unused_result));
+GHashTable *findwalk(const char *, const GHashTable *)
+    __attribute__((nonnull, returns_nonnull, warn_unused_result));
+
 bool is_current_or_parent(const char *name) {
     return name[0] == '.' || (name[0] == '.' && name[1] == '.');
 }
 
-int pbl_set_compare_strings(const void *l, const void *r) {
-    char *left = *(char **)l;
-    char *right = *(char **)r;
-    return strcmp(left, right);
-}
-
-PblSet *find_files_in_packages() {
-    DIR *dirp = opendir(installed_base);
+GHashTable *find_files_in_packages(const char *base) {
+    DIR *dirp = opendir(base);
+    assert(dirp);
     struct dirent *cent, *pent;
-    Ustr *pdir_path = USTR("");
-    Ustr *contents_path = USTR("");
-    PblSet *set = pblSetNewHashSet();
-    pblSetSetHashValueFunction(set, pblSetStringHashValue);
-    pblSetSetCompareFunction(set, &pbl_set_compare_strings);
+    GString *pdir_path = g_string_new(NULL);
+    GString *contents_path = g_string_new(NULL);
+    GHashTable *set = g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
+    assert(set);
+
+    GString *s_obj = g_string_new("obj");
+    GString *s_sym = g_string_new("sym");
 
     while ((cent = readdir(dirp))) {
         if (is_current_or_parent(cent->d_name)) {
             continue;
         }
 
-        ustr_set_fmt(&pdir_path, "%s/%s", installed_base, cent->d_name);
-
-        DIR *pdir = opendir(ustr_cstr(pdir_path));
+        g_string_printf(pdir_path, "%s/%s", installed_base, cent->d_name);
+        DIR *pdir = opendir(pdir_path->str);
+        assert(pdir);
         while ((pent = readdir(pdir))) {
             if (is_current_or_parent(pent->d_name)) {
                 continue;
             }
 
-            ustr_set_fmt(&contents_path,
-                         "%s/%s/%s/CONTENTS",
-                         installed_base,
-                         cent->d_name,
-                         pent->d_name);
-            FILE *cfile = fopen(ustr_cstr(contents_path), "r");
-            char buf_line[USTR_SIZE_FIXED(512)];
-            Ustr *line = USTR_SC_INIT_AUTO(buf_line, USTR_FALSE, 0);
+            g_string_printf(contents_path,
+                            "%s/%s/%s/CONTENTS",
+                            installed_base,
+                            cent->d_name,
+                            pent->d_name);
+            GString *line = g_string_new(NULL);
+            GError *error = NULL;
+            GIOChannel *cfile = g_io_channel_new_file(contents_path->str, "r", &error);
+            GIOStatus status;
 
-            while (ustr_io_getline(&line, cfile)) {
-                size_t off = 0;
-                Ustr *type = NULL;
-                Ustr *path;
-                Ustr *result;
+            while ((status = g_io_channel_read_line_string(cfile, line, NULL, &error)) != G_IO_STATUS_EOF) {
+                assert(status == G_IO_STATUS_NORMAL);
+                GString *type = g_string_new(g_strndup(line->str, 3));
+                assert(type->str[0] != '/');
 
-                while ((result = ustr_split_spn_chrs(
-                            line, &off, " ", 1, NULL, 0))) {
-                    if (ustr_len(result) == 3) {
-                        type = result;
-                    } else if (ustr_cmp_prefix_cstr_eq(result, "/")) {
-                        assert(type != NULL);
-                        size_t off2 = 0;
-                        path = ustr_split_spn_chrs(
-                            result, &off2, "\n", 1, NULL, 0);
+                gchar **sp = g_strsplit(line->str + 4, " ", 2);
+                GString *path = g_string_new(g_strstrip(sp[0]));
+                g_strfreev(sp);
+                assert(path->len > 0);
+                assert(path->str[0] == '/');
 
-                        int ret = pblSetAdd(set, (void *)ustr_cstr(path));
-                        assert(ret >= 0);
-                        printf("add '%s' from line: '%s'\n",
-                               ustr_cstr(path),
-                               ustr_cstr(line));
+                g_hash_table_add(set, path);
 
-                        if (ustr_cmp_cstr_eq(type, "obj") ||
-                            ustr_cmp_cstr_eq(type, "sym")) {
-                            if (ustr_cmp_suffix_cstr_eq(path, ".py")) {
-                                Ustr *py_compiled_type = ustr_dup(path);
-                                ustr_add_cstr(&py_compiled_type, "c");
-                                pblSetAdd(set,
-                                          (void *)ustr_cstr(py_compiled_type));
-                                py_compiled_type = ustr_dup(path);
-                                ustr_add_cstr(&py_compiled_type, "o");
-                                pblSetAdd(set,
-                                          (void *)ustr_cstr(py_compiled_type));
-                            }
-                        }
-
-                        break;
-                    }
-                }
-
-                // Required for the loop to continue
-                if (line != USTR(buf_line)) {
-                    ustr_sc_free2(&line,
-                                  USTR_SC_INIT_AUTO(buf_line, USTR_FALSE, 0));
+                if (g_string_equal(s_obj, type) || g_string_equal(s_sym, type)) {
+                    GString *py_compiled_type = g_string_new(path->str);
+                    g_string_append_c(py_compiled_type, 'c');
+                    g_hash_table_add(set, py_compiled_type);
+                    g_string_assign(py_compiled_type, path->str);
+                    g_string_append_c(py_compiled_type, 'o');
+                    g_hash_table_add(set, py_compiled_type);
+                    g_string_free(py_compiled_type, TRUE);
                 }
             }
-
-            fclose(cfile);
         }
 
         closedir(pdir);
     }
+
+    g_string_free(s_obj, TRUE);
+    g_string_free(s_sym, TRUE);
+    g_string_free(contents_path, TRUE);
+    g_string_free(pdir_path, TRUE);
 
     closedir(dirp);
 
     return set;
 }
 
-static inline int strneq(const char *t, const char *u) {
+inline int strneq(const char *t, const char *u) {
     return strcmp(t, u) != 0;
 }
 
@@ -137,37 +125,49 @@ static inline int strneq(const char *t, const char *u) {
 //     }
 // }
 
-PblSet *findwalk(const char *path, const PblSet *package_files) {
-    PblSet *candidates = pblSetNewHashSet();
-    pblSetSetHashValueFunction(candidates, pblSetStringHashValue);
-    pblSetSetCompareFunction(candidates, &pbl_set_compare_strings);
+void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
+    GHashTableIter iter;
+    g_hash_table_iter_init(&iter, src);
+    gpointer file, _;
+    while (g_hash_table_iter_next(&iter, &file, &_)) {
+        printf("%d: %s\n", __LINE__, ((GString *)file)->str);
+        g_hash_table_add(target, file);
+    }
+}
+
+GHashTable *findwalk(const char *path, const GHashTable *package_files) {
+    GHashTable *candidates = g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
+    assert(candidates);
 
     DIR *dir = opendir(path);
+    assert(dir);
     struct dirent *cdir;
     while ((cdir = readdir(dir))) {
         if (is_current_or_parent(cdir->d_name)) {
             continue;
         }
 
-        Ustr *ce = ustr_dup_cstr(path);
-        ustr_add_fmt(&ce, "/%s", cdir->d_name);
-        const char *cen = ustr_cstr(ce);
+        GString *ce = g_string_new(path);
+        g_string_append_printf(ce, "/%s", cdir->d_name);
 
         // Whitelist check
 
         // package_files check
-        if (!pblSetContains((PblSet *)package_files, (char *)cen)) {
-            pblSetAdd(candidates, (void *)cen);
+        if (!g_hash_table_contains((GHashTable *)package_files, ce)) {
+            g_hash_table_add(candidates, ce);
         }
 
         // Continue if the entry is a directory
         struct stat s;
-        lstat(cen, &s);
+        lstat(ce->str, &s);
         if (S_ISDIR(s.st_mode) && !S_ISLNK(s.st_mode)) {
-            PblSet *next = findwalk(cen, package_files);
-            pblSetAddAll(candidates, next);
-            pblSetFree(next);
+            GHashTable *next = findwalk(ce->str, package_files);
+            assert(next);
+            g_hash_table_add_all(candidates, next);
+            g_hash_table_destroy(next);
         }
+
+        g_string_free(ce, TRUE);
     }
 
     closedir(dir);
@@ -180,53 +180,63 @@ int main(int argc, char *argv[]) {
     (void)argv;
 
     printf("Finding files contained in packages...\n");
-    PblSet *package_files = find_files_in_packages();
+    GHashTable *package_files = find_files_in_packages(installed_base);
+    assert(package_files);
 
     if (strneq(libmap, "lib64")) {
-        pblSetFree(package_files);
+        g_hash_table_destroy(package_files);
 
-        fprintf(stderr, "libmap option with value \"lib\" not supported.\n");
+        fprintf(stderr, "libmap option with value \"lib\" not yet supported.\n");
 
         return 1;
     }
 
-    // printf("Applying general exceptions...\n");
-
-    printf("Finding files on system...\n");
-
-    const char *check_dirs[CHECK_DIRS_SIZE] = {
-        "/bin",
-        "/etc",
-        "/lib",
-        "/lib32",
-        "/lib64",
-        "/opt",
-        "/sbin",
-        "/usr",
-        "/var",
-    };
-
-    for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
-        const char *dir = check_dirs[i];
-
-        struct stat s;
-        stat(dir, &s);
-        if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
-            continue;
-        }
-
-        PblSet *candidates = findwalk(dir, package_files);
-
-        PblIterator *it = pblSetIterator(candidates);
-        char *file;
-        while ((file = pblIteratorNext(it)) && pblIteratorHasNext(it)) {
-            // printf("%s\n", file);
-        }
-
-        pblSetFree(candidates);
+    GHashTableIter iter;
+    g_hash_table_iter_init(&iter, package_files);
+    gpointer file, value;
+    while (g_hash_table_iter_next(&iter, &file, &value)) {
+        printf("%d: '%s'\n", __LINE__, ((GString *)value)->str);
     }
 
-    pblSetFree(package_files);
+    // printf("Applying general exceptions...\n");
+
+//     printf("Finding files on system...\n");
+//
+//     const char *check_dirs[CHECK_DIRS_SIZE] = {
+//         "/bin",
+//         "/etc",
+//         "/lib",
+//         "/lib32",
+//         "/lib64",
+//         "/opt",
+//         "/sbin",
+//         "/usr",
+//         "/var",
+//     };
+
+//     for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
+//         const char *dir = check_dirs[i];
+//
+//         struct stat s;
+//         stat(dir, &s);
+//         if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
+//             continue;
+//         }
+//
+//         GHashTable *candidates = findwalk(dir, package_files);
+//         assert(candidates);
+//
+//         GHashTableIter iter;
+//         g_hash_table_iter_init(&iter, candidates);
+//         gpointer file, value;
+//         while (g_hash_table_iter_next(&iter, &file, &value)) {
+//             printf("%d: %s\n", __LINE__, ((GString *)file)->str);
+//         }
+//
+//         g_hash_table_destroy(candidates);
+//     }
+
+    g_hash_table_destroy(package_files);
 
     return 0;
 }
