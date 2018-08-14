@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(gcruft2)
 
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -ggdb -Wall -O0")
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/helper/")
 find_package(GLIB2 REQUIRED)
 

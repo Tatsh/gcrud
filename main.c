@@ -30,8 +30,8 @@ int strneq(const char *, const char *)
     __attribute__((nonnull, warn_unused_result));
 GHashTable *find_files_in_packages(const char *)
     __attribute__((nonnull, returns_nonnull, warn_unused_result));
-GHashTable *findwalk(const char *, const GHashTable *)
-    __attribute__((nonnull, returns_nonnull, warn_unused_result));
+GHashTable *findwalk(const char *, const GHashTable *, GDestroyNotify)
+    __attribute__((returns_nonnull, warn_unused_result));
 
 bool is_current_or_parent(const char *name) {
     return name[0] == '.' || (name[0] == '.' && name[1] == '.');
@@ -41,73 +41,61 @@ GHashTable *find_files_in_packages(const char *base) {
     DIR *dirp = opendir(base);
     assert(dirp);
     struct dirent *cent, *pent;
-    GString *pdir_path = g_string_new(NULL);
-    GString *contents_path = g_string_new(NULL);
     GHashTable *set =
-        g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
+        g_hash_table_new_full((GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
     assert(set);
-
-    GString *s_obj = g_string_new("obj");
-    GString *s_sym = g_string_new("sym");
 
     while ((cent = readdir(dirp))) {
         if (is_current_or_parent(cent->d_name)) {
             continue;
         }
 
-        g_string_printf(pdir_path, "%s/%s", installed_base, cent->d_name);
-        DIR *pdir = opendir(pdir_path->str);
+        gchar *pdir_path = g_strdup_printf("%s/%s", installed_base, cent->d_name);
+        DIR *pdir = opendir(pdir_path);
         assert(pdir);
+
         while ((pent = readdir(pdir))) {
             if (is_current_or_parent(pent->d_name)) {
                 continue;
             }
 
-            g_string_printf(contents_path,
-                            "%s/%s/%s/CONTENTS",
-                            installed_base,
-                            cent->d_name,
-                            pent->d_name);
-            GString *line = g_string_new(NULL);
+            gchar *cpath = g_strdup_printf("%s/%s/%s/CONTENTS", installed_base, cent->d_name, pent->d_name);
+
+            gchar *line;
             GError *error = NULL;
             GIOChannel *cfile =
-                g_io_channel_new_file(contents_path->str, "r", &error);
+                g_io_channel_new_file(cpath, "r", &error);
             GIOStatus status;
 
-            while ((status = g_io_channel_read_line_string(
-                        cfile, line, NULL, &error)) != G_IO_STATUS_EOF) {
+            while ((status = g_io_channel_read_line(
+                        cfile, &line, NULL, NULL, &error)) != G_IO_STATUS_EOF) {
                 assert(status == G_IO_STATUS_NORMAL);
-                GString *type = g_string_new(g_strndup(line->str, 3));
-                assert(type->str[0] != '/');
+                gchar *type = g_strndup(line, 3);
+                assert(type[0] != '/');
 
-                gchar **sp = g_strsplit(line->str + 4, " ", 2);
-                GString *path = g_string_new(g_strstrip(sp[0]));
-                g_strfreev(sp);
-                assert(path->len > 0);
-                assert(path->str[0] == '/');
+                gchar **sp = g_strsplit(line + 4, " ", 2);
+                gchar *path = g_strdup(sp[0]);
+                path = g_strstrip(path);
+                assert(path[0] == '/');
 
                 g_hash_table_add(set, path);
 
-                if (g_string_equal(s_obj, type) ||
-                    g_string_equal(s_sym, type)) {
-                    GString *py_compiled_type = g_string_new(path->str);
-                    g_string_append_c(py_compiled_type, 'c');
+                if (g_str_equal("obj", type) || g_str_equal("sym", type)) {
+                    gchar *py_compiled_type = g_strdup_printf("%sc", path);
                     g_hash_table_add(set, py_compiled_type);
-                    g_string_assign(py_compiled_type, path->str);
-                    g_string_append_c(py_compiled_type, 'o');
+                    py_compiled_type = g_strdup_printf("%so", path);
                     g_hash_table_add(set, py_compiled_type);
-                    g_string_free(py_compiled_type, TRUE);
                 }
+
+                g_strfreev(sp);
             }
+
+            g_free(cpath);
         }
 
         closedir(pdir);
+        g_free(pdir_path);
     }
-
-    g_string_free(s_obj, TRUE);
-    g_string_free(s_sym, TRUE);
-    g_string_free(contents_path, TRUE);
-    g_string_free(pdir_path, TRUE);
 
     closedir(dirp);
 
@@ -134,45 +122,51 @@ void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
     g_hash_table_iter_init(&iter, src);
     gpointer file, _;
     while (g_hash_table_iter_next(&iter, &file, &_)) {
-        printf("%d: %s\n", __LINE__, ((GString *)file)->str);
         g_hash_table_add(target, file);
     }
 }
 
-GHashTable *findwalk(const char *path, const GHashTable *package_files) {
+GHashTable *findwalk(const char *path, const GHashTable *package_files, GDestroyNotify key_destroy_func) {
     GHashTable *candidates =
-        g_hash_table_new((GHashFunc)g_string_hash, (GEqualFunc)g_string_equal);
-    assert(candidates);
+        g_hash_table_new_full((GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, key_destroy_func, NULL);
+    assert(candidates != NULL);
 
     DIR *dir = opendir(path);
-    assert(dir);
+    assert(dir != NULL);
     struct dirent *cdir;
     while ((cdir = readdir(dir))) {
         if (is_current_or_parent(cdir->d_name)) {
             continue;
         }
 
-        GString *ce = g_string_new(path);
-        g_string_append_printf(ce, "/%s", cdir->d_name);
+        gchar *ce = g_strdup_printf("%s/%s", path, cdir->d_name);
+        gboolean clean_up_ce = FALSE;
+        assert(ce != NULL);
 
         // Whitelist check
 
         // package_files check
         if (!g_hash_table_contains((GHashTable *)package_files, ce)) {
             g_hash_table_add(candidates, ce);
+        } else {
+            clean_up_ce = TRUE;
         }
 
-        // Continue if the entry is a directory
+        // Recurse if the entry is a directory
         struct stat s;
-        lstat(ce->str, &s);
+        lstat(ce, &s);
         if (S_ISDIR(s.st_mode) && !S_ISLNK(s.st_mode)) {
-            GHashTable *next = findwalk(ce->str, package_files);
-            assert(next);
+            // On recursion do not set a key destroy function because the
+            // top hash table already has one
+            GHashTable *next = findwalk(ce, package_files, NULL);
+            assert(next != NULL);
             g_hash_table_add_all(candidates, next);
             g_hash_table_destroy(next);
         }
 
-        g_string_free(ce, TRUE);
+        if (clean_up_ce) {
+            g_free(ce);
+        }
     }
 
     closedir(dir);
@@ -188,6 +182,7 @@ int main(int argc, char *argv[]) {
     GHashTable *package_files = find_files_in_packages(installed_base);
     assert(package_files);
 
+    // TODO Support this option in /etc/gcruft, etc
     if (strneq(libmap, "lib64")) {
         g_hash_table_destroy(package_files);
 
@@ -197,50 +192,44 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    GHashTableIter iter;
-    g_hash_table_iter_init(&iter, package_files);
-    gpointer file, value;
-    while (g_hash_table_iter_next(&iter, &file, &value)) {
-        printf("%d: '%s'\n", __LINE__, ((GString *)value)->str);
-    }
-
+    // TODO
     // printf("Applying general exceptions...\n");
 
-    //     printf("Finding files on system...\n");
-    //
-    //     const char *check_dirs[CHECK_DIRS_SIZE] = {
-    //         "/bin",
-    //         "/etc",
-    //         "/lib",
-    //         "/lib32",
-    //         "/lib64",
-    //         "/opt",
-    //         "/sbin",
-    //         "/usr",
-    //         "/var",
-    //     };
+    printf("Finding files on system...\n");
 
-    //     for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
-    //         const char *dir = check_dirs[i];
-    //
-    //         struct stat s;
-    //         stat(dir, &s);
-    //         if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
-    //             continue;
-    //         }
-    //
-    //         GHashTable *candidates = findwalk(dir, package_files);
-    //         assert(candidates);
-    //
-    //         GHashTableIter iter;
-    //         g_hash_table_iter_init(&iter, candidates);
-    //         gpointer file, value;
-    //         while (g_hash_table_iter_next(&iter, &file, &value)) {
-    //             printf("%d: %s\n", __LINE__, ((GString *)file)->str);
-    //         }
-    //
-    //         g_hash_table_destroy(candidates);
-    //     }
+    const char *check_dirs[CHECK_DIRS_SIZE] = {
+        "/bin",
+        "/etc",
+        "/lib",
+        "/lib32",
+        "/lib64",
+        "/opt",
+        "/sbin",
+        "/usr",
+        "/var",
+    };
+
+    for (unsigned int i = 0; i < CHECK_DIRS_SIZE; i++) {
+        const char *dir = check_dirs[i];
+
+        struct stat s;
+        stat(dir, &s);
+        if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
+            continue;
+        }
+
+        GHashTable *candidates = findwalk(dir, package_files, g_free);
+        assert(candidates);
+
+        GHashTableIter iter;
+        g_hash_table_iter_init(&iter, candidates);
+        gpointer file, value;
+        while (g_hash_table_iter_next(&iter, &file, &value)) {
+            printf("%s\n", (gchar *)file);
+        }
+
+        g_hash_table_destroy(candidates);
+    }
 
     g_hash_table_destroy(package_files);
 
