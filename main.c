@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Finding files on system...\n");
 
-    const char *check_dirs[] = {
+    static const char *check_dirs[] = {
         "/bin",
         "/etc",
         "/lib",
