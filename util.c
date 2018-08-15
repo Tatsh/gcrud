@@ -37,8 +37,7 @@ GHashTable *find_files_in_packages(const char *base) {
             GIOStatus status;
 
             while ((status = g_io_channel_read_line(
-                        cfile, &line, NULL, NULL, NULL)) !=
-                   G_IO_STATUS_EOF) {
+                        cfile, &line, NULL, NULL, NULL)) != G_IO_STATUS_EOF) {
                 g_assert(status == G_IO_STATUS_NORMAL);
                 gchar *type = g_strndup(line, 3);
                 g_assert(type[0] != '/');
@@ -108,10 +107,10 @@ GHashTable *findwalk(const char *path,
 #ifndef DEBUG
     g_assert_nonnull(dir);
 #else
-        if (!dir) {
-            // If not root it's a permission issue
-            return candidates;
-        }
+    if (!dir) {
+        // If not root it's a permission issue
+        return candidates;
+    }
 #endif
     struct dirent *cdir;
     while ((cdir = readdir(dir))) {
