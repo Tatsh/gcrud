@@ -24,18 +24,10 @@ int main(int argc, char *argv[]) {
     GHashTable *package_files = find_files_in_packages(installed_base);
     g_assert_nonnull(package_files);
 
-    // TODO Support this option in /etc/gcruft, etc
-    if (strcmp(libmap, "lib64") != 0) {
-        g_hash_table_destroy(package_files);
-
-        fprintf(stderr,
-                "libmap option with value \"lib\" not yet supported.\n");
-
-        return 1;
+    // TODO Support this option in config file like /etc/gcrud
+    if (strcmp(libmap, "lib") != 0) {
+        apply_lib_mapping(package_files, libmap);
     }
-
-    // TODO
-    // fprintf(stderr, "Applying general exceptions...\n");
 
     fprintf(stderr, "Finding files on system...\n");
 
