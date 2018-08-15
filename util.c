@@ -49,7 +49,8 @@ GHashTable *find_files_in_packages(const char *base) {
 
                 g_hash_table_add(set, path);
 
-                if ((g_str_equal("obj", type) || g_str_equal("sym", type)) && g_str_has_suffix(path, ".py")) {
+                if ((g_str_equal("obj", type) || g_str_equal("sym", type)) &&
+                    g_str_has_suffix(path, ".py")) {
                     gchar *py_compiled_type = g_strdup_printf("%sc", path);
                     g_hash_table_add(set, py_compiled_type);
                     py_compiled_type = g_strdup_printf("%so", path);
@@ -112,21 +113,15 @@ static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
 // TODO Move these to a configuration file
 static gboolean whitelist_check(const char *ce) {
     return g_str_has_prefix(ce, "/usr/portage/") ||
-           g_str_equal("/usr/portage", ce) ||
-           g_str_equal("/bin/awk", ce) ||
-           g_str_equal("/bin/sh", ce) ||
-           g_str_equal("/etc/adjtime", ce) ||
-           g_str_equal("/etc/fstab", ce) ||
-           g_str_equal("/etc/group", ce) ||
-           g_str_equal("/etc/group-", ce) ||
-           g_str_equal("/etc/gshadow", ce) ||
+           g_str_equal("/usr/portage", ce) || g_str_equal("/bin/awk", ce) ||
+           g_str_equal("/bin/sh", ce) || g_str_equal("/etc/adjtime", ce) ||
+           g_str_equal("/etc/fstab", ce) || g_str_equal("/etc/group", ce) ||
+           g_str_equal("/etc/group-", ce) || g_str_equal("/etc/gshadow", ce) ||
            g_str_equal("/etc/gshadow-", ce) ||
            g_str_equal("/etc/password", ce) ||
            g_str_equal("/etc/password-", ce) ||
-           g_str_equal("/etc/shadow", ce) ||
-           g_str_equal("/etc/shadow-", ce) ||
-           g_str_equal("/etc/mtab", ce) ||
-           g_str_equal("/etc/ntp.conf", ce) ||
+           g_str_equal("/etc/shadow", ce) || g_str_equal("/etc/shadow-", ce) ||
+           g_str_equal("/etc/mtab", ce) || g_str_equal("/etc/ntp.conf", ce) ||
            g_str_equal("/etc/hostname", ce) ||
            g_str_equal("/etc/ld.so.cache", ce) ||
            g_str_equal("/etc/ld.so.conf", ce) ||
@@ -137,12 +132,15 @@ static gboolean whitelist_check(const char *ce) {
            g_str_equal("/etc/udev/hwdb.bin", ce) ||
            g_str_equal("/etc/locale.conf", ce) ||
            g_str_equal("/etc/prelink.conf.d/portage.conf", ce) ||
-           (g_str_has_prefix(ce, "/etc/ssh/ssh_host_") && (g_str_has_suffix(ce, "_key") || g_str_has_suffix(ce, "_key.pub"))) ||
+           (g_str_has_prefix(ce, "/etc/ssh/ssh_host_") &&
+            (g_str_has_suffix(ce, "_key") ||
+             g_str_has_suffix(ce, "_key.pub"))) ||
            g_str_equal("/lib64/systemd/resolv.conf", ce) ||
            g_str_equal("/lib/ld-2.27.so", ce) ||
            g_str_has_prefix(ce, "/lib/ld-linux") ||
            g_str_equal("/usr/lib64/debug", ce) ||
-           (g_str_has_prefix(ce, "/usr/lib64/debug") && g_str_has_suffix(ce, ".debug")) ||
+           (g_str_has_prefix(ce, "/usr/lib64/debug") &&
+            g_str_has_suffix(ce, ".debug")) ||
            g_str_has_prefix(ce, "/var/db/pkg/") ||
            g_str_equal("/var/db/pkg", ce) ||
            g_str_equal("/var/lib/portage", ce) ||
@@ -183,7 +181,8 @@ GHashTable *findwalk(const char *path,
         // Whitelist check
 
         // package_files check
-        if (!g_hash_table_contains((GHashTable *)package_files, ce) && !whitelist_check(ce)) {
+        if (!g_hash_table_contains((GHashTable *)package_files, ce) &&
+            !whitelist_check(ce)) {
             g_hash_table_add(candidates, ce);
         } else {
             clean_up_ce = TRUE;
