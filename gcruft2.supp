@@ -1,0 +1,162 @@
+{
+   <hash2>
+   Memcheck:Addr4
+   fun:g_hash_table_unref
+   obj:/*
+   fun:(below main)
+}
+{
+   <hash3>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_private_impl_new
+   fun:g_private_get_impl
+   fun:g_private_get
+   fun:thread_memory_from_self
+   fun:g_slice_alloc
+   fun:g_hash_table_new_full
+   fun:g_quark_init
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib64/ld-*
+}
+{
+   <hash4>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_private_impl_new
+   fun:g_private_get_impl
+   fun:g_private_get
+   fun:g_logv
+   fun:g_log
+   fun:g_hash_table_iter_next
+   obj:/*
+   obj:/*
+   fun:(below main)
+}
+{
+   <hash5>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_private_impl_new
+   fun:g_private_get_impl
+   fun:g_private_get
+   fun:g_log_structured_array
+   fun:g_log_default_handler
+   fun:g_logv
+   fun:g_log
+   fun:g_hash_table_iter_next
+   obj:/*
+   obj:/*
+   fun:(below main)
+}
+{
+   <hash6>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_private_impl_new
+   fun:g_private_get_impl
+   fun:g_private_get
+   fun:g_get_charset
+   fun:g_log_writer_format_fields
+   fun:g_log_writer_standard_streams
+   fun:g_log_writer_default
+   fun:g_log_structured_array
+   fun:g_log_default_handler
+   fun:g_logv
+   fun:g_log
+   fun:g_hash_table_iter_next
+}
+{
+   <hash7>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_malloc
+   fun:g_strdup
+   fun:g_get_charset
+   fun:g_log_writer_format_fields
+   fun:g_log_writer_standard_streams
+   fun:g_log_writer_default
+   fun:g_log_structured_array
+   fun:g_log_default_handler
+   fun:g_logv
+   fun:g_log
+   fun:g_hash_table_iter_next
+}
+{
+   <hash8>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   fun:g_malloc0
+   fun:g_get_charset
+   fun:g_log_writer_format_fields
+   fun:g_log_writer_standard_streams
+   fun:g_log_writer_default
+   fun:g_log_structured_array
+   fun:g_log_default_handler
+   fun:g_logv
+   fun:g_log
+   fun:g_hash_table_iter_next
+   obj:/home/*
+}
+{
+   <hash9>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   fun:g_malloc0
+   fun:g_hash_table_new_full
+   fun:g_quark_init
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib64/ld-*
+}
+{
+   <hash10>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_malloc
+   fun:g_slice_alloc
+   fun:g_hash_table_new_full
+   fun:g_quark_init
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib64/ld-*
+}
+{
+   <hash11>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:calloc
+   fun:g_malloc0
+   fun:thread_memory_from_self
+   fun:g_slice_alloc
+   fun:g_hash_table_new_full
+   fun:g_quark_init
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib64/ld-*
+}
+{
+   <hash12>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_malloc
+   fun:g_quark_init
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib64/ld-*
+}
