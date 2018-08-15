@@ -104,7 +104,7 @@ GHashTable *findwalk(const char *path,
     g_assert_nonnull(candidates);
 
     DIR *dir = opendir(path);
-#ifndef DEBUG
+#ifdef NDEBUG
     g_assert_nonnull(dir);
 #else
     if (!dir) {
