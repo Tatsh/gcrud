@@ -92,6 +92,7 @@ void apply_lib_mapping(const GHashTable *package_files, const char *libmap) {
         gchar *prefix = g_strndup(file, off);
         gchar *rest = g_strdup(file + off + 4);
         gchar *file_ = g_strdup_printf("%s%s/%s", prefix, libmap, rest);
+        g_assert_nonnull(file_);
 
         g_hash_table_remove((GHashTable *)package_files, file);
         g_hash_table_add((GHashTable *)package_files, file_);
