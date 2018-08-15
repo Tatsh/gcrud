@@ -49,7 +49,7 @@ GHashTable *find_files_in_packages(const char *base) {
 
                 g_hash_table_add(set, path);
 
-                if (g_str_equal("obj", type) || g_str_equal("sym", type)) {
+                if ((g_str_equal("obj", type) || g_str_equal("sym", type)) && g_str_has_suffix(path, ".py")) {
                     gchar *py_compiled_type = g_strdup_printf("%sc", path);
                     g_hash_table_add(set, py_compiled_type);
                     py_compiled_type = g_strdup_printf("%so", path);
@@ -74,16 +74,31 @@ GHashTable *find_files_in_packages(const char *base) {
     return set;
 }
 
-// void apply_lib_mapping(const PblSet *package_files) {
-//     PblIterator *it = pblSetIterator(package_files);
-//     char *file;
-//     while ((file = pblIteratorNext(it))) {
-//
-//         if (!pblIteratorHasNext(it)) {
-//             break;
-//         }
-//     }
-// }
+void apply_lib_mapping(const GHashTable *package_files, const char *libmap) {
+    GHashTableIter it;
+    gpointer file, _;
+    g_hash_table_iter_init(&it, (GHashTable *)package_files);
+    while (g_hash_table_iter_next(&it, &file, &_)) {
+        size_t off = 0;
+        if (g_str_has_prefix(file, "/usr/lib/")) {
+            off = 5;
+        } else if (g_str_has_prefix(file, "/lib/")) {
+            off = 0;
+        } else {
+            continue;
+        }
+
+        gchar *prefix = g_strndup(file, off);
+        gchar *rest = g_strdup(file + off + 4);
+        gchar *file_ = g_strdup_printf("%s%s/%s", prefix, libmap, rest);
+
+        g_hash_table_remove((GHashTable *)package_files, file);
+        g_hash_table_add((GHashTable *)package_files, file_);
+
+        g_free(prefix);
+        g_free(rest);
+    }
+}
 
 static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
     GHashTableIter iter;
@@ -92,6 +107,49 @@ static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
     while (g_hash_table_iter_next(&iter, &file, &_)) {
         g_hash_table_add(target, file);
     }
+}
+
+// TODO Move these to a configuration file
+static gboolean whitelist_check(const char *ce) {
+    return g_str_has_prefix(ce, "/usr/portage/") ||
+           g_str_equal("/usr/portage", ce) ||
+           g_str_equal("/bin/awk", ce) ||
+           g_str_equal("/bin/sh", ce) ||
+           g_str_equal("/etc/adjtime", ce) ||
+           g_str_equal("/etc/fstab", ce) ||
+           g_str_equal("/etc/group", ce) ||
+           g_str_equal("/etc/group-", ce) ||
+           g_str_equal("/etc/gshadow", ce) ||
+           g_str_equal("/etc/gshadow-", ce) ||
+           g_str_equal("/etc/password", ce) ||
+           g_str_equal("/etc/password-", ce) ||
+           g_str_equal("/etc/shadow", ce) ||
+           g_str_equal("/etc/shadow-", ce) ||
+           g_str_equal("/etc/mtab", ce) ||
+           g_str_equal("/etc/ntp.conf", ce) ||
+           g_str_equal("/etc/hostname", ce) ||
+           g_str_equal("/etc/ld.so.cache", ce) ||
+           g_str_equal("/etc/ld.so.conf", ce) ||
+           g_str_equal("/etc/ld.so.conf.d", ce) ||
+           g_str_has_prefix(ce, "/etc/ld.so.conf.d/") ||
+           g_str_equal("/etc/localtime", ce) ||
+           g_str_equal("/etc/timezone", ce) ||
+           g_str_equal("/etc/udev/hwdb.bin", ce) ||
+           g_str_equal("/etc/locale.conf", ce) ||
+           g_str_equal("/etc/prelink.conf.d/portage.conf", ce) ||
+           (g_str_has_prefix(ce, "/etc/ssh/ssh_host_") && (g_str_has_suffix(ce, "_key") || g_str_has_suffix(ce, "_key.pub"))) ||
+           g_str_equal("/lib64/systemd/resolv.conf", ce) ||
+           g_str_equal("/lib/ld-2.27.so", ce) ||
+           g_str_has_prefix(ce, "/lib/ld-linux") ||
+           g_str_equal("/usr/lib64/debug", ce) ||
+           (g_str_has_prefix(ce, "/usr/lib64/debug") && g_str_has_suffix(ce, ".debug")) ||
+           g_str_has_prefix(ce, "/var/db/pkg/") ||
+           g_str_equal("/var/db/pkg", ce) ||
+           g_str_equal("/var/lib/portage", ce) ||
+           g_str_has_prefix(ce, "/var/lib/portage/") ||
+           g_str_equal("/var/lib/ntp", ce) ||
+           g_str_equal("/var/lib/ntp/ntp.drift", ce) ||
+           g_str_has_prefix(ce, "/var/lib/gentoo/news/");
 }
 
 GHashTable *findwalk(const char *path,
@@ -125,7 +183,7 @@ GHashTable *findwalk(const char *path,
         // Whitelist check
 
         // package_files check
-        if (!g_hash_table_contains((GHashTable *)package_files, ce)) {
+        if (!g_hash_table_contains((GHashTable *)package_files, ce) && !whitelist_check(ce)) {
             g_hash_table_add(candidates, ce);
         } else {
             clean_up_ce = TRUE;
