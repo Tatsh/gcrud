@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "colors.h"
 #include "util.h"
@@ -11,6 +12,13 @@ static const char *libmap = "lib64";
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
+
+#ifdef NDEBUG
+    if (geteuid() != 0) {
+        fprintf(stderr, "This must be run as root.\n");
+        return 1;
+    }
+#endif
 
     fprintf(stderr, "Finding files contained in packages...\n");
     GHashTable *package_files = find_files_in_packages(installed_base);
