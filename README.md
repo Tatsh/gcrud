@@ -1,4 +1,6 @@
-# How to use
+# grud - A Gentoo maintenance tool
+
+## How to use
 
 1. `git clone ...`
 2. `cd gcrud`
@@ -11,7 +13,7 @@
 View `out.log` and check out things you *might* be able to remove. The whitelist is a work in progress. See [`whitelist.c`'s `whitelist_check()`](whitelist.c#L6) function.
 
 
-# Contributing
+## Contributing
 
 [Issue tracker](https://gitlab.com/Tatsh/gcrud/issues)
 
