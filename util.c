@@ -75,27 +75,26 @@ GHashTable *find_files_in_packages(const char *base) {
     return set;
 }
 
-void apply_lib_mapping(const GHashTable *package_files, const char *libmap) {
+void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
     GHashTableIter it;
     gpointer file, _;
-    g_hash_table_iter_init(&it, (GHashTable *)package_files);
+    g_hash_table_iter_init(&it, package_files);
     while (g_hash_table_iter_next(&it, &file, &_)) {
-        size_t off = 0;
-        if (g_str_has_prefix(file, "/usr/lib/")) {
-            off = 5;
-        } else if (g_str_has_prefix(file, "/lib/")) {
-            off = 0;
-        } else {
+        gboolean starts_with_usr_lib = g_str_has_prefix(file, "/usr/lib/");
+        gboolean starts_with_lib = g_str_has_prefix(file, "/lib/");
+        if (!starts_with_lib && !starts_with_usr_lib) {
             continue;
         }
 
+        size_t off = starts_with_lib ? 0 : 5;
         gchar *prefix = g_strndup(file, off);
+        g_assert_nonnull(prefix);
         gchar *rest = g_strdup(file + off + 4);
+        g_assert_nonnull(rest);
         gchar *file_ = g_strdup_printf("%s%s/%s", prefix, libmap, rest);
         g_assert_nonnull(file_);
 
-        g_hash_table_remove((GHashTable *)package_files, file);
-        g_hash_table_add((GHashTable *)package_files, file_);
+        g_hash_table_iter_replace(&it, file_);
 
         g_free(prefix);
         g_free(rest);
@@ -151,6 +150,12 @@ static gboolean whitelist_check(const char *ce) {
            g_str_has_prefix(ce, "/var/lib/gentoo/news/");
 }
 
+static gboolean should_recurse(const char *path) {
+    struct stat s;
+    g_assert(lstat(path, &s) == 0);
+    return S_ISDIR(s.st_mode) && !S_ISLNK(s.st_mode);
+}
+
 GHashTable *findwalk(const char *path,
                      const GHashTable *package_files,
                      GDestroyNotify key_destroy_func) {
@@ -176,12 +181,11 @@ GHashTable *findwalk(const char *path,
         }
 
         gchar *ce = g_strdup_printf("%s/%s", path, cdir->d_name);
-        gboolean clean_up_ce = FALSE;
         g_assert_nonnull(ce);
 
-        // Whitelist check
+        gboolean clean_up_ce = FALSE;
 
-        // package_files check
+        // Whitelist and package_files check
         if (!g_hash_table_contains((GHashTable *)package_files, ce) &&
             !whitelist_check(ce)) {
             g_hash_table_add(candidates, ce);
@@ -190,13 +194,10 @@ GHashTable *findwalk(const char *path,
         }
 
         // Recurse if the entry is a directory
-        struct stat s;
-        lstat(ce, &s);
-        if (S_ISDIR(s.st_mode) && !S_ISLNK(s.st_mode)) {
+        if (should_recurse(ce)) {
             // On recursion do not set a key destroy function because the
             // top hash table already has one
             GHashTable *next = findwalk(ce, package_files, NULL);
-            g_assert_nonnull(next);
             g_hash_table_add_all(candidates, next);
             g_hash_table_destroy(next);
         }
