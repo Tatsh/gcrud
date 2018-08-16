@@ -2,7 +2,7 @@
 
 #include <glib-2.0/glib.h>
 
-extern void apply_lib_mapping(const GHashTable *, const char *)
+extern void apply_lib_mapping(GHashTable *, const char *)
     __attribute__((nonnull));
 extern GHashTable *find_files_in_packages(const char *)
     __attribute__((nonnull, returns_nonnull, warn_unused_result));
