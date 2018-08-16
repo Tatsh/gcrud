@@ -1,4 +1,5 @@
 #ifndef GRUD_UTIL_H
+#define GRUD_UTIL_H
 
 #include <glib-2.0/glib.h>
 
