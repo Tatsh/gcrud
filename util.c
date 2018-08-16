@@ -92,7 +92,7 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
         size_t off = starts_with_lib ? 0 : 5;
         gchar *prefix = g_strndup(file, off);
         g_assert_nonnull(prefix);
-        gchar *rest = g_strdup(file + off + 4);
+        gchar *rest = g_strdup((gchar *)file + off + 4);
         g_assert_nonnull(rest);
         gchar *file_ = g_strdup_printf("%s%s/%s", prefix, libmap, rest);
         g_assert_nonnull(file_);

@@ -1,5 +1,5 @@
 #include "colors.h"
 
-const char *terminal_reset = "\e[0m";
-const char *terminal_bold = "\e[1m";
-const char *terminal_color_red = "\e[1;31m";
+const char *terminal_reset = "\033[0m";
+const char *terminal_bold = "\033[1m";
+const char *terminal_color_red = "\033[1;31m";
