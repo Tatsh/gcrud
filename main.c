@@ -6,13 +6,11 @@
 #include "colors.h"
 #include "util.h"
 
+// TODO Move to configuration
 static const char *installed_base = "/var/db/pkg";
 static const char *libmap = "lib64";
 
-int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
-
+int main() {
 #ifdef NDEBUG
     if (geteuid() != 0) {
         fprintf(stderr, "This must be run as root.\n");
@@ -22,7 +20,6 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Finding files contained in packages...\n");
     GHashTable *package_files = find_files_in_packages(installed_base);
-    g_assert_nonnull(package_files);
 
     // TODO Support this option in config file like /etc/gcrud
     if (strcmp(libmap, "lib") != 0) {
@@ -48,19 +45,17 @@ int main(int argc, char *argv[]) {
         const char *dir = check_dirs[i];
 
         struct stat s;
-        stat(dir, &s);
+        g_assert(stat(dir, &s) == 0);
         if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
             continue;
         }
 
         GHashTable *candidates = findwalk(dir, package_files, g_free);
-        g_assert_nonnull(candidates);
-
         GHashTableIter iter;
-        gpointer file, value;
+        gpointer file, _;
 
         g_hash_table_iter_init(&iter, candidates);
-        while (g_hash_table_iter_next(&iter, &file, &value)) {
+        while (g_hash_table_iter_next(&iter, &file, &_)) {
             g_assert_nonnull(&file);
             printf("%s\n", (gchar *)file);
         }
