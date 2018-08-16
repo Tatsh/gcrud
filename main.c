@@ -8,8 +8,15 @@
 // TODO Move to configuration
 static const char *installed_base = "/var/db/pkg";
 static const char *libmap = "lib64";
+static const char *version = "v0.1.0";
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc == 2 &&
+        (g_str_equal(argv[1], "-v") || g_str_equal(argv[1], "--version"))) {
+        printf("%s\n", version);
+        return 0;
+    }
+
 #ifdef NDEBUG
     if (geteuid() != 0) {
         fprintf(stderr, "This must be run as root.\n");
