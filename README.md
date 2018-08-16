@@ -20,4 +20,4 @@ View `out.log` and check out things you *might* be able to remove. The whitelist
 3. Make changes.
 4. Build in debug mode: `cmake .. -DCMAKE_BUILD_TYPE=Debug -G 'Unix Makefiles' && make`
 5. Test!
-6. Before submitting, run: `clang-format -i *.h *.c`
+6. Before submitting, run: `./check-leaks.sh` to check for memory leaks (requires Valgrind) and `clang-format -i *.h *.c` (requires Clang).
