@@ -11,8 +11,8 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} \
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/helper/")
 find_package(GLIB2 REQUIRED)
 
-add_executable(gcruft2 colors.c util.c main.c)
+add_executable(gcrud colors.c util.c main.c)
 target_include_directories(gcruft2 PRIVATE ${GLIB_INCLUDE_DIRS})
 target_link_libraries(gcruft2 ${GLIB_LIBRARIES})
 
-install(TARGETS gcruft2 RUNTIME DESTINATION bin)
+install(TARGETS gcrud RUNTIME DESTINATION bin)
