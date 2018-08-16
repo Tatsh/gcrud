@@ -8,7 +8,7 @@
 6. `make`
 7. `sudo ./gcruft2 | sort -u > out.log`
 
-View `out.log` and check out things you *might* be able to remove. The whitelist is a work in progress. See [`whitelist.c`'s `whitelist_check()`](/Tatsh/gcrud/blob/master/whitelist.c#L6) function.
+View `out.log` and check out things you *might* be able to remove. The whitelist is a work in progress. See [`whitelist.c`'s `whitelist_check()`](whitelist.c#L6) function.
 
 
 # Contributing
