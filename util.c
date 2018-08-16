@@ -3,6 +3,8 @@
 
 #include <sys/stat.h>
 
+#include <glib/gprintf.h>
+
 static inline gboolean is_current_or_parent(const char *name) {
     return name[0] == '.' || (name[0] == '.' && name[1] == '.');
 }
@@ -142,7 +144,12 @@ GHashTable *findwalk(const char *path,
         }
 
         gchar *ce = g_strdup_printf("%s/%s", path, cdir->d_name);
-        g_assert_nonnull(ce);
+        if (!ce) {
+            g_fprintf(stderr,
+                      "Unexpected return value from g_strdup_printf(). "
+                      "Stopping here.");
+            break;
+        }
 
         gboolean clean_up_ce = FALSE;
 
