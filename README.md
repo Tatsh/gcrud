@@ -13,6 +13,8 @@ View `out.log` and check out things you *might* be able to remove. The whitelist
 
 # Contributing
 
+[Issue tracker](https://gitlab.com/Tatsh/gcrud/issues)
+
 1. Fork.
 2. Make a new branch.
 3. Make changes.
