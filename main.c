@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -22,7 +21,7 @@ int main() {
     GHashTable *package_files = find_files_in_packages(installed_base);
 
     // TODO Support this option in config file like /etc/gcrud
-    if (strcmp(libmap, "lib") != 0) {
+    if (g_str_equal(libmap, "lib")) {
         apply_lib_mapping(package_files, libmap);
     }
 
