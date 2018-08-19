@@ -12,29 +12,21 @@ static inline gboolean is_current_or_parent(const char *name) {
 }
 
 GHashTable *find_files_in_packages(const char *base) {
-    DIR *dirp = opendir(base);
+    GDir *dirp = g_dir_open(base, 0, NULL);
     g_assert_nonnull(dirp);
-    struct dirent *cent, *pent;
+    const gchar *cent, *pent;
     GHashTable *set = g_hash_table_new_full(
         (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
     g_assert_nonnull(set);
 
-    while ((cent = readdir(dirp))) {
-        if (is_current_or_parent(cent->d_name)) {
-            continue;
-        }
-
-        gchar *pdir_path = g_strdup_printf("%s/%s", base, cent->d_name);
-        DIR *pdir = opendir(pdir_path);
+    while ((cent = g_dir_read_name(dirp))) {
+        gchar *pdir_path = g_strdup_printf("%s/%s", base, cent);
+        GDir *pdir = g_dir_open(pdir_path, 0, NULL);
         g_assert_nonnull(pdir);
 
-        while ((pent = readdir(pdir))) {
-            if (is_current_or_parent(pent->d_name)) {
-                continue;
-            }
-
+        while ((pent = g_dir_read_name(pdir))) {
             gchar *cpath = g_strdup_printf(
-                "%s/%s/%s/CONTENTS", base, cent->d_name, pent->d_name);
+                "%s/%s/%s/CONTENTS", base, cent, pent);
 
             gchar *line;
             GIOChannel *cfile = g_io_channel_new_file(cpath, "r", NULL);
@@ -85,11 +77,11 @@ cleanup:
             g_free(cpath);
         }
 
-        closedir(pdir);
+        g_dir_close(pdir);
         g_free(pdir_path);
     }
 
-    closedir(dirp);
+    g_dir_close(dirp);
 
     return set;
 }
@@ -142,7 +134,7 @@ GHashTable *findwalk(const char *path,
                                                    NULL);
     g_assert_nonnull(candidates);
 
-    DIR *dir = opendir(path);
+    GDir *dir = g_dir_open(path, 0, NULL);
 #ifdef NDEBUG
     g_assert_nonnull(dir);
 #else
@@ -151,13 +143,9 @@ GHashTable *findwalk(const char *path,
         return candidates;
     }
 #endif
-    struct dirent *cdir;
-    while ((cdir = readdir(dir))) {
-        if (is_current_or_parent(cdir->d_name)) {
-            continue;
-        }
-
-        gchar *ce = g_strdup_printf("%s/%s", path, cdir->d_name);
+    const char *cdir;
+    while ((cdir = g_dir_read_name(dir))) {
+        gchar *ce = g_strdup_printf("%s/%s", path, cdir);
         if (!ce) {
             g_fprintf(stderr,
                       "Unexpected return value from g_strdup_printf(). "
@@ -200,7 +188,7 @@ GHashTable *findwalk(const char *path,
         }
     }
 
-    closedir(dir);
+    g_dir_close(dir);
 
     return candidates;
 }
