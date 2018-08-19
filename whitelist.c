@@ -40,9 +40,9 @@ int whitelist_check(const char *ce) {
            g_str_equal("/usr/lib32/debug", ce) ||
            g_str_equal("/usr/lib64/debug", ce) ||
            (g_str_has_prefix(ce, "/usr/lib/debug") &&
-           g_str_has_suffix(ce, ".debug")) ||
+            g_str_has_suffix(ce, ".debug")) ||
            (g_str_has_prefix(ce, "/usr/lib32/debug") &&
-           g_str_has_suffix(ce, ".debug")) ||
+            g_str_has_suffix(ce, ".debug")) ||
            (g_str_has_prefix(ce, "/usr/lib64/debug") &&
             g_str_has_suffix(ce, ".debug")) ||
            g_str_has_prefix(ce, "/var/db/pkg/") ||

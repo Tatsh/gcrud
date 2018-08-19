@@ -23,8 +23,8 @@ GHashTable *find_files_in_packages(const char *base) {
         g_assert_nonnull(pdir);
 
         while ((pent = g_dir_read_name(pdir))) {
-            gchar *cpath = g_strdup_printf(
-                "%s/%s/%s/CONTENTS", base, cent, pent);
+            gchar *cpath =
+                g_strdup_printf("%s/%s/%s/CONTENTS", base, cent, pent);
 
             gchar *line;
             GIOChannel *cfile = g_io_channel_new_file(cpath, "r", NULL);
@@ -64,7 +64,7 @@ GHashTable *find_files_in_packages(const char *base) {
                     g_hash_table_add(set, py_compiled_type);
                 }
 
-cleanup:
+            cleanup:
                 free(resolved_path);
                 g_free(type);
                 g_free(line);
@@ -120,7 +120,8 @@ static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
 }
 
 static inline gboolean should_recurse(const char *path) {
-    return !g_file_test(path, G_FILE_TEST_IS_SYMLINK) && g_file_test(path, G_FILE_TEST_IS_DIR);
+    return !g_file_test(path, G_FILE_TEST_IS_SYMLINK) &&
+           g_file_test(path, G_FILE_TEST_IS_DIR);
 }
 
 GHashTable *findwalk(const char *path,
