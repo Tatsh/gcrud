@@ -1,6 +1,8 @@
 #include "util.h"
 #include "whitelist.h"
 
+#include <stdlib.h>
+
 #include <sys/stat.h>
 
 #include <glib/gprintf.h>
@@ -50,7 +52,15 @@ GHashTable *find_files_in_packages(const char *base) {
                 path = g_strstrip(path);
                 g_assert(path[0] == '/');
 
+                char *resolved_path = realpath(path, NULL);
+                if (!resolved_path) {
+                    goto cleanup;
+                }
+
+                gchar *rpath = g_strdup(resolved_path);
+
                 g_hash_table_add(set, path);
+                g_hash_table_add(set, rpath);
 
                 if ((g_str_equal("obj", type) || g_str_equal("sym", type)) &&
                     g_str_has_suffix(path, ".py")) {
@@ -58,8 +68,14 @@ GHashTable *find_files_in_packages(const char *base) {
                     g_hash_table_add(set, py_compiled_type);
                     py_compiled_type = g_strdup_printf("%so", path);
                     g_hash_table_add(set, py_compiled_type);
+                    py_compiled_type = g_strdup_printf("%sc", rpath);
+                    g_hash_table_add(set, py_compiled_type);
+                    py_compiled_type = g_strdup_printf("%so", rpath);
+                    g_hash_table_add(set, py_compiled_type);
                 }
 
+cleanup:
+                free(resolved_path);
                 g_free(type);
                 g_free(line);
                 g_strfreev(sp);
@@ -113,10 +129,8 @@ static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
     }
 }
 
-static gboolean should_recurse(const char *path) {
-    struct stat s;
-    g_assert(lstat(path, &s) == 0);
-    return S_ISDIR(s.st_mode) && !S_ISLNK(s.st_mode);
+static inline gboolean should_recurse(const char *path) {
+    return !g_file_test(path, G_FILE_TEST_IS_SYMLINK) && g_file_test(path, G_FILE_TEST_IS_DIR);
 }
 
 GHashTable *findwalk(const char *path,
@@ -150,13 +164,24 @@ GHashTable *findwalk(const char *path,
                       "Stopping here.");
             break;
         }
+        char *rce = realpath(ce, NULL);
+
+        if (!rce) {
+            g_free(ce);
+            continue;
+        }
+
+        if (g_hash_table_contains(candidates, rce)) {
+            g_free(ce);
+            continue;
+        }
 
         gboolean clean_up_ce = FALSE;
 
         // Whitelist and package_files check
         if (!g_hash_table_contains((GHashTable *)package_files, ce) &&
-            !whitelist_check(ce)) {
-            g_hash_table_add(candidates, ce);
+            !whitelist_check(ce) && !whitelist_check(rce)) {
+            g_hash_table_add(candidates, rce);
         } else {
             clean_up_ce = TRUE;
         }
