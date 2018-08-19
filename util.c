@@ -3,8 +3,6 @@
 
 #include <stdlib.h>
 
-#include <sys/stat.h>
-
 #include <glib/gprintf.h>
 
 static inline gboolean is_current_or_parent(const char *name) {
