@@ -177,7 +177,9 @@ GHashTable *findwalk(const char *path,
             clean_up_ce = TRUE;
         }
 
-        if (is_sym && rce && !g_str_equal(ce, rce) && !g_hash_table_contains((GHashTable *)package_files, rce) && !whitelist_check(rce)) {
+        if (is_sym && rce && !g_str_equal(ce, rce) &&
+            !g_hash_table_contains((GHashTable *)package_files, rce) &&
+            !whitelist_check(rce)) {
             g_hash_table_add(candidates, rce);
         } else if (rce) {
             g_free(rce);
