@@ -5,10 +5,6 @@
 
 #include <glib/gprintf.h>
 
-static inline gboolean is_current_or_parent(const char *name) {
-    return name[0] == '.' || (name[0] == '.' && name[1] == '.');
-}
-
 GHashTable *find_files_in_packages(const char *base) {
     GDir *dirp = g_dir_open(base, 0, NULL);
     g_assert_nonnull(dirp);
