@@ -42,30 +42,40 @@ GHashTable *find_files_in_packages(const char *base) {
                 path = g_strstrip(path);
                 g_assert(path[0] == '/');
 
-                char *resolved_path = realpath(path, NULL);
-                if (!resolved_path) {
-                    goto cleanup;
+                const gboolean is_sym = g_str_equal("sym", type);
+                char *resolved_path = NULL;
+
+                if (is_sym) {
+                    resolved_path = realpath(path, NULL);
+                    if (!resolved_path) {
+                        goto cleanup;
+                    }
                 }
 
-                gchar *rpath = g_strdup(resolved_path);
-
                 g_hash_table_add(set, path);
-                g_hash_table_add(set, rpath);
+                gchar *rpath = NULL;
+                if (is_sym && resolved_path) {
+                    rpath = g_strdup(resolved_path);
+                    free(resolved_path);
+                    g_hash_table_add(set, rpath);
+                }
 
-                if ((g_str_equal("obj", type) || g_str_equal("sym", type)) &&
+                if ((g_str_equal("obj", type) || is_sym) &&
                     g_str_has_suffix(path, ".py")) {
                     gchar *py_compiled_type = g_strdup_printf("%sc", path);
                     g_hash_table_add(set, py_compiled_type);
                     py_compiled_type = g_strdup_printf("%so", path);
                     g_hash_table_add(set, py_compiled_type);
-                    py_compiled_type = g_strdup_printf("%sc", rpath);
-                    g_hash_table_add(set, py_compiled_type);
-                    py_compiled_type = g_strdup_printf("%so", rpath);
-                    g_hash_table_add(set, py_compiled_type);
+
+                    if (rpath) {
+                        py_compiled_type = g_strdup_printf("%sc", rpath);
+                        g_hash_table_add(set, py_compiled_type);
+                        py_compiled_type = g_strdup_printf("%so", rpath);
+                        g_hash_table_add(set, py_compiled_type);
+                    }
                 }
 
             cleanup:
-                free(resolved_path);
                 g_free(type);
                 g_free(line);
                 g_strfreev(sp);
@@ -151,26 +161,26 @@ GHashTable *findwalk(const char *path,
                       "Stopping here.");
             break;
         }
-        char *rce = realpath(ce, NULL);
-
-        if (!rce) {
-            g_free(ce);
-            continue;
-        }
-
-        if (g_hash_table_contains(candidates, rce)) {
-            g_free(ce);
-            continue;
+        gchar *rce = NULL;
+        const gboolean is_sym = g_file_test(ce, G_FILE_TEST_IS_SYMLINK);
+        if (is_sym) {
+            rce = realpath(ce, NULL);
         }
 
         gboolean clean_up_ce = FALSE;
 
         // Whitelist and package_files check
         if (!g_hash_table_contains((GHashTable *)package_files, ce) &&
-            !whitelist_check(ce) && !whitelist_check(rce)) {
-            g_hash_table_add(candidates, rce);
+            !whitelist_check(ce)) {
+            g_hash_table_add(candidates, ce);
         } else {
             clean_up_ce = TRUE;
+        }
+
+        if (is_sym && rce && !g_str_equal(ce, rce) && !g_hash_table_contains((GHashTable *)package_files, rce) && !whitelist_check(rce)) {
+            g_hash_table_add(candidates, rce);
+        } else if (rce) {
+            g_free(rce);
         }
 
         // Recurse if the entry is a directory
