@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(gcrud)
 
-set(shared_c_flags "-fno-builtin -fstrict-aliasing -std=gnu11")
-set(debug_c_flags "${shared_c_flags} \
--O0 \
+set(shared_c_flags "-fno-builtin -std=gnu11")
+set(debug_c_flags "-ggdb -O0 \
 -pedantic \
 -Wall \
 -Wdeprecated-declarations \
