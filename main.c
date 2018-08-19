@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+#ifdef NDEBUG
+// For geteuid()
+#include <sys/types.h>
+#include <unistd.h>
+#endif
+
 #include "colors.h"
 #include "util.h"
 
