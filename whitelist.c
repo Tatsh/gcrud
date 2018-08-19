@@ -27,10 +27,22 @@ int whitelist_check(const char *ce) {
            (g_str_has_prefix(ce, "/etc/ssh/ssh_host_") &&
             (g_str_has_suffix(ce, "_key") ||
              g_str_has_suffix(ce, "_key.pub"))) ||
+           g_str_equal("/lib/systemd/resolv.conf", ce) ||
+           g_str_equal("/lib32/systemd/resolv.conf", ce) ||
            g_str_equal("/lib64/systemd/resolv.conf", ce) ||
            g_str_equal("/lib/ld-2.27.so", ce) ||
+           g_str_equal("/lib32/ld-2.27.so", ce) ||
+           g_str_equal("/lib64/ld-2.27.so", ce) ||
            g_str_has_prefix(ce, "/lib/ld-linux") ||
+           g_str_has_prefix(ce, "/lib32/ld-linux") ||
+           g_str_has_prefix(ce, "/lib64/ld-linux") ||
+           g_str_equal("/usr/lib/debug", ce) ||
+           g_str_equal("/usr/lib32/debug", ce) ||
            g_str_equal("/usr/lib64/debug", ce) ||
+           (g_str_has_prefix(ce, "/usr/lib/debug") &&
+           g_str_has_suffix(ce, ".debug")) ||
+           (g_str_has_prefix(ce, "/usr/lib32/debug") &&
+           g_str_has_suffix(ce, ".debug")) ||
            (g_str_has_prefix(ce, "/usr/lib64/debug") &&
             g_str_has_suffix(ce, ".debug")) ||
            g_str_has_prefix(ce, "/var/db/pkg/") ||
