@@ -31,4 +31,5 @@ __pycache__/
 ehthumbs.db
 Thumbs.db
 
-build/
+/build/
+/build2/
