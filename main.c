@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     GHashTable *package_files = find_files_in_packages(installed_base);
 
     // TODO Support this option in config file like /etc/gcrud
-    if (g_str_equal(libmap, "lib")) {
+    if (!g_str_equal(libmap, "lib")) {
         apply_lib_mapping(package_files, libmap);
     }
 
