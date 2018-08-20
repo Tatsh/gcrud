@@ -3,6 +3,26 @@
 #include <glib-2.0/glib.h>
 
 // TODO Move these to a configuration file
+/*
+# Candidates
+
+* Any directory with at least one .keep-* file inside if the package mentioned is installed
+* /lib64/firmware/intel-ucode if sys-firmware/intel-microcode is installed
+* /lib64/gentoo/functions.sh ?
+* /lib64/modules/<active kernel>/
+* /lib64/systemd/system/ - files that derive from systemd main package
+* /var/tmp/portage/._unmerge_
+* /var/tmp/systemd-private-*
+* /var/lib/geoclue if geoclue is installed
+* /var/lib/gitolite/ if gitolite is installed
+* /var/lib/ip6tables/rules-save
+* /var/lib/iptables/rules-save
+* /var/lib/docker/ if Docker is installed
+* /var/cache/edb/ ?
+* /var/cache/fontconfig/ if fontconfig is installed
+* /var/cache/eix/ if eix is installed
+* /var/cache/genkernel if genkernel is installed
+*/
 int whitelist_check(const char *ce) {
     return g_str_has_prefix(ce, "/usr/portage/") ||
            g_str_equal("/usr/portage", ce) || g_str_equal("/bin/awk", ce) ||
