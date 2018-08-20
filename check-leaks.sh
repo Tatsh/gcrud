@@ -6,7 +6,11 @@ mkdir build2
 cd build2
 cmake .. -DCMAKE_BUILD_TYPE=Debug -G 'Unix Makefiles'
 make
-valgrind --leak-check=full --show-leak-kinds=all --suppressions=../gcrud.supp \
+valgrind \
+    -v \
+    --leak-check=full \
+    --show-leak-kinds=definite \
+    --suppressions=../gcrud.supp \
     ./gcrud
 cd ..
 rm -fR build2
