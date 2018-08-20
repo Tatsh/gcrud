@@ -10,7 +10,7 @@ GHashTable *find_files_in_packages(const char *base) {
     g_assert_nonnull(dirp);
     const gchar *cent, *pent;
     GHashTable *set = g_hash_table_new_full(
-        (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+        (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, NULL, g_free);
     g_assert_nonnull(set);
 
     while ((cent = g_dir_read_name(dirp))) {
@@ -109,7 +109,8 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
         gchar *file_ = g_strdup_printf("%s%s/%s", prefix, libmap, rest);
         g_assert_nonnull(file_);
 
-        g_hash_table_iter_replace(&it, file_);
+        g_hash_table_iter_remove(&it);
+        g_hash_table_add(package_files, file_);
 
         g_free(prefix);
         g_free(rest);
@@ -132,11 +133,11 @@ static inline gboolean should_recurse(const char *path) {
 
 GHashTable *findwalk(const char *path,
                      const GHashTable *package_files,
-                     GDestroyNotify key_destroy_func) {
+                     GDestroyNotify value_destroy_func) {
     GHashTable *candidates = g_hash_table_new_full((GHashFunc)g_str_hash,
                                                    (GEqualFunc)g_str_equal,
-                                                   key_destroy_func,
-                                                   NULL);
+                                                   NULL,
+                                                   value_destroy_func);
     g_assert_nonnull(candidates);
 
     GDir *dir = g_dir_open(path, 0, NULL);
@@ -157,11 +158,6 @@ GHashTable *findwalk(const char *path,
                       "Stopping here.");
             break;
         }
-        gchar *rce = NULL;
-        const gboolean is_sym = g_file_test(ce, G_FILE_TEST_IS_SYMLINK);
-        if (is_sym) {
-            rce = realpath(ce, NULL);
-        }
 
         gboolean clean_up_ce = FALSE;
 
@@ -171,14 +167,6 @@ GHashTable *findwalk(const char *path,
             g_hash_table_add(candidates, ce);
         } else {
             clean_up_ce = TRUE;
-        }
-
-        if (is_sym && rce && !g_str_equal(ce, rce) &&
-            !g_hash_table_contains((GHashTable *)package_files, rce) &&
-            !whitelist_check(rce)) {
-            g_hash_table_add(candidates, rce);
-        } else if (rce) {
-            g_free(rce);
         }
 
         // Recurse if the entry is a directory
