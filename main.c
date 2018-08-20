@@ -56,8 +56,8 @@ int main(int argc, char *argv[]) {
         const char *dir = check_dirs[i];
 
         struct stat s;
-        g_assert(stat(dir, &s) == 0);
-        if (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode)) {
+        int ret = stat(dir, &s);
+        if (ret != 0 || (!S_ISDIR(s.st_mode) || S_ISLNK(s.st_mode))) {
             continue;
         }
 
