@@ -1,4 +1,4 @@
-# grud - A Gentoo maintenance tool
+# gcrud - A Gentoo maintenance tool
 
 ## How to use
 
