@@ -44,6 +44,7 @@ GHashTable *find_files_in_packages(const char *base) {
                 if (is_sym) {
                     resolved_path = realpath(path, NULL);
                     if (!resolved_path) {
+                        g_free(path);
                         goto cleanup;
                     }
                 }
