@@ -1,6 +1,45 @@
-#include "whitelist.h"
+#include <stdbool.h>
+#include <sys/stat.h>
 
 #include <glib-2.0/glib.h>
+#include <glib/gprintf.h>
+
+#include "whitelist.h"
+
+bool has_package_installed(const char *atom) {
+    bool ret = false;
+    GDir *dirp = NULL;
+    gchar *path_with_category = NULL;
+    struct stat s;
+    gchar **spl = g_strsplit(atom, "/", 2);
+    gchar *full_path = g_strdup_printf("/var/db/pkg/%s", atom);
+    if (stat(full_path, &s) == 0) {
+        ret = true;
+        goto cleanup;
+    }
+
+    path_with_category = g_strdup_printf("/var/db/pkg/%s", atom);
+    dirp = g_dir_open(path_with_category, 0, NULL);
+    gchar *name = spl[1];
+    const char *cent;
+
+    while ((cent = g_dir_read_name(dirp))) {
+        if (g_str_has_prefix(name, cent)) {
+            ret = true;
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    g_strfreev(spl);
+    g_free(full_path);
+    if (path_with_category) {
+        g_free(path_with_category);
+        g_dir_close(dirp);
+    }
+
+    return ret;
+}
 
 // TODO Move these to a configuration file
 /*
