@@ -14,6 +14,17 @@
 static const char *installed_base = "/var/db/pkg";
 static const char *libmap = "lib64";
 static const char *version = "v0.1.0";
+static const char *check_dirs[] = {
+    "/bin",
+    "/etc",
+    "/lib",
+    "/lib32",
+    "/lib64",
+    "/opt",
+    "/sbin",
+    "/usr",
+    "/var",
+};
 
 int main(int argc, char *argv[]) {
     if (argc == 2 &&
@@ -38,18 +49,6 @@ int main(int argc, char *argv[]) {
     }
 
     fprintf(stderr, "Finding files on system...\n");
-
-    static const char *check_dirs[] = {
-        "/bin",
-        "/etc",
-        "/lib",
-        "/lib32",
-        "/lib64",
-        "/opt",
-        "/sbin",
-        "/usr",
-        "/var",
-    };
 
     for (unsigned int i = 0; i < sizeof(check_dirs) / sizeof(const char *);
          i++) {
