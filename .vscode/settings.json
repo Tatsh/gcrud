@@ -1,0 +1,10 @@
+{
+  "[c]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "[cmake]": {
+    "editor.defaultFormatter": "cheshirekow.cmake-format"
+  },
+  "cmake.configureOnOpen": true,
+  "editor.formatOnSave": true
+}
