@@ -6,46 +6,12 @@
 
 #include "whitelist.h"
 
-bool has_package_installed(const char *atom) {
-    bool ret = false;
-    GDir *dirp = NULL;
-    gchar *path_with_category = NULL;
-    struct stat s;
-    gchar **spl = g_strsplit(atom, "/", 2);
-    gchar *full_path = g_strdup_printf("/var/db/pkg/%s", atom);
-    if (stat(full_path, &s) == 0) {
-        ret = true;
-        goto cleanup;
-    }
-
-    path_with_category = g_strdup_printf("/var/db/pkg/%s", atom);
-    dirp = g_dir_open(path_with_category, 0, NULL);
-    gchar *name = spl[1];
-    const char *cent;
-
-    while ((cent = g_dir_read_name(dirp))) {
-        if (g_str_has_prefix(name, cent)) {
-            ret = true;
-            goto cleanup;
-        }
-    }
-
-cleanup:
-    g_strfreev(spl);
-    g_free(full_path);
-    if (path_with_category) {
-        g_free(path_with_category);
-        g_dir_close(dirp);
-    }
-
-    return ret;
-}
-
+static GHashTable *package_installed_cache = NULL;
 static GRegex *prefix_re = NULL;
 static GRegex *filenames_re = NULL;
 static GRegex *ssh_host_re = NULL;
 static GRegex *lib_debug_re = NULL;
-
+// TODO Move these to a configuration file
 static const char *prefixes[] = {
     "/etc/ld.so.conf.d/",
     "/lib/ld-linux",
@@ -80,10 +46,13 @@ static const char *filenames[] = {
     "/etc/shadow-",
     "/etc/timezone",
     "/etc/udev/hwdb.bin",
+    "/lib/gentoo/functions.sh",
     "/lib/ld-2.27.so",
     "/lib/systemd/resolv.conf",
+    "/lib32/gentoo/functions.sh",
     "/lib32/ld-2.27.so",
     "/lib32/systemd/resolv.conf",
+    "/lib64/gentoo/functions.sh",
     "/lib64/ld-2.27.so",
     "/lib64/systemd/resolv.conf",
     "/usr/lib/debug",
@@ -96,29 +65,92 @@ static const char *filenames[] = {
     "/var/lib/ntp",
     "/var/lib/ntp/ntp.drift",
     "/var/lib/portage",
+    "/var/tmp/portage/._unmerge_",
+};
+static const char *package_checks[] = {
+    "/lib64/firmware/intel-ucode:/lib32/firmware/"
+    "intel-ucode:/lib/firmware/intel-ucode|sys-firmware/intel-microcode",
+    "/var/cache/eix|app-portage/eix",
+    "/var/cache/fontconfig|media-libs/fontconfig",
+    "/var/lib/docker|app-emulation/docker",
+    "/var/lib/gitolite|dev-vcs/gitolite|dev-vcs/gitolite-gentoo",
+    "/var/cache/genkernel|sys-kernel/genkernel",
 };
 
-// TODO Move these to a configuration file
-/*
-# Candidates
+static gboolean has_package_installed(const char *atom) {
+    if (package_installed_cache == NULL) {
+        package_installed_cache = g_hash_table_new_full(
+            (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+        g_assert_nonnull(package_installed_cache);
+    }
 
-* Any directory with at least one .keep-* file inside if the package mentioned
-is installed
-* /lib64/firmware/intel-ucode if sys-firmware/intel-microcode is installed
-* /lib64/gentoo/functions.sh ?
-* /lib64/modules/<active kernel>/
-* /lib64/systemd/system/ - files that derive from systemd main package
-* /var/tmp/portage/._unmerge_
-* /var/tmp/systemd-private-*
-* /var/lib/geoclue if geoclue is installed
-* /var/lib/gitolite/ if gitolite is installed
-* /var/lib/docker/ if Docker is installed
-* /var/cache/edb/ ?
-* /var/cache/fontconfig/ if fontconfig is installed
-* /var/cache/eix/ if eix is installed
-* /var/cache/genkernel if genkernel is installed
-*/
-int whitelist_check(const char *ce) {
+    if (g_hash_table_contains(package_installed_cache,
+                              g_strdup_printf("%s:::1", atom))) {
+        return true;
+    }
+    if (g_hash_table_contains(package_installed_cache,
+                              g_strdup_printf("%s:::0", atom))) {
+        return false;
+    }
+
+    bool ret = false;
+    GDir *dirp = NULL;
+    gchar *path_with_category = NULL;
+    gchar **spl = g_strsplit(atom, "/", 2);
+    path_with_category = g_strdup_printf("/var/db/pkg/%s", spl[0]);
+    dirp = g_dir_open(path_with_category, 0, NULL);
+    if (!dirp) {
+        goto cleanup;
+    }
+    gchar *name = spl[1];
+    const char *cent;
+
+    while ((cent = g_dir_read_name(dirp))) {
+        if (g_str_has_prefix(cent, name)) {
+            ret = true;
+            break;
+        }
+    }
+
+cleanup:
+    g_strfreev(spl);
+    if (path_with_category) {
+        g_free(path_with_category);
+    }
+    if (dirp) {
+        g_dir_close(dirp);
+    }
+
+    g_hash_table_add(
+        package_installed_cache,
+        (gpointer)g_strdup_printf("%s%s", atom, ret ? ":::1" : ":::0"));
+
+    return ret;
+}
+
+static gboolean whitelist_package_check(const char *ce) {
+    gboolean found = false;
+    for (size_t i = 0, l = ARRAY_SIZE(package_checks); i < l && !found; i++) {
+        gchar **package_checks_spl = g_strsplit(package_checks[i], "|", 2);
+        gchar **paths = g_strsplit(package_checks_spl[0], ":", 10);
+        for (size_t j = 0; paths[j] != NULL; j++) {
+            if (g_str_has_prefix(ce, paths[j])) {
+                gchar **packages = g_strsplit(package_checks_spl[1], "|", 2);
+                for (size_t k = 0; packages[k] != NULL; k++) {
+                    if (has_package_installed(packages[k])) {
+                        found = true;
+                        break;
+                    }
+                }
+                g_strfreev(packages);
+            }
+        }
+        g_strfreev(package_checks_spl);
+    }
+    return found;
+}
+
+static gboolean whitelist_re_check(const char *ce) {
     if (prefix_re == NULL) {
         GString *pattern = g_string_new("");
         for (size_t i = 0, l = ARRAY_SIZE(prefixes); i < l; i++) {
@@ -165,4 +197,16 @@ int whitelist_check(const char *ce) {
            g_regex_match(filenames_re, ce, 0, NULL) ||
            g_regex_match(ssh_host_re, ce, 0, NULL) ||
            g_regex_match(lib_debug_re, ce, 0, NULL);
+}
+
+/**
+ * TODO Candidates:
+ * * Any directory with at least one .keep-* file inside if the package
+ * mentioned is installed (a `qatom` implementation is required to parse this)
+ * * /lib64/modules/<active kernel>/
+ * * /lib64/systemd/system/ - files that derive from systemd main package
+ */
+gboolean whitelist_check(const char *ce) {
+    return g_str_has_prefix(ce, "/var/tmp/systemd-private-") ||
+           whitelist_package_check(ce) || whitelist_re_check(ce);
 }

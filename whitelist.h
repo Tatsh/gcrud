@@ -25,6 +25,6 @@
      (sizeof(a) / sizeof(*a)) \
      + MUST_BE_ARRAY(a))
 
-extern int whitelist_check(const char *ce);
+extern gboolean whitelist_check(const char *ce) __attribute__((nonnull));
 
 #endif // GCRUD_WHITELIST_H
