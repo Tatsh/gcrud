@@ -13,7 +13,7 @@
 // TODO Move to configuration
 static const char *installed_base = "/var/db/pkg";
 static const char *libmap = "lib64";
-static const char *version = "v0.1.0";
+static const char *version = "v0.1.1";
 static const char *check_dirs[] = {
     "/bin",
     "/etc",
