@@ -41,11 +41,69 @@ cleanup:
     return ret;
 }
 
+static GRegex *prefix_re = NULL;
+static GRegex *filenames_re = NULL;
+static GRegex *ssh_host_re = NULL;
+static GRegex *lib_debug_re = NULL;
+
+static const char *prefixes[] = {
+    "/etc/ld.so.conf.d/",
+    "/lib/ld-linux",
+    "/lib32/ld-linux",
+    "/lib64/ld-linux",
+    "/usr/portage",
+    "/var/db/pkg/",
+    "/var/lib/gentoo/news/",
+    "/var/lib/portage/",
+};
+static const char *filenames[] = {
+    "/bin/awk",
+    "/bin/sh",
+    "/etc/adjtime",
+    "/etc/fstab",
+    "/etc/group",
+    "/etc/group-",
+    "/etc/gshadow",
+    "/etc/gshadow-",
+    "/etc/hostname",
+    "/etc/ld.so.cache",
+    "/etc/ld.so.conf",
+    "/etc/ld.so.conf.d",
+    "/etc/locale.conf",
+    "/etc/localtime",
+    "/etc/mtab",
+    "/etc/ntp.conf",
+    "/etc/password",
+    "/etc/password-",
+    "/etc/prelink.conf.d/portage.conf",
+    "/etc/shadow",
+    "/etc/shadow-",
+    "/etc/timezone",
+    "/etc/udev/hwdb.bin",
+    "/lib/ld-2.27.so",
+    "/lib/systemd/resolv.conf",
+    "/lib32/ld-2.27.so",
+    "/lib32/systemd/resolv.conf",
+    "/lib64/ld-2.27.so",
+    "/lib64/systemd/resolv.conf",
+    "/usr/lib/debug",
+    "/usr/lib32/debug",
+    "/usr/lib64/debug",
+    "/usr/portage",
+    "/var/db/pkg",
+    "/var/lib/ip6tables/rules-save",
+    "/var/lib/iptables/rules-save",
+    "/var/lib/ntp",
+    "/var/lib/ntp/ntp.drift",
+    "/var/lib/portage",
+};
+
 // TODO Move these to a configuration file
 /*
 # Candidates
 
-* Any directory with at least one .keep-* file inside if the package mentioned is installed
+* Any directory with at least one .keep-* file inside if the package mentioned
+is installed
 * /lib64/firmware/intel-ucode if sys-firmware/intel-microcode is installed
 * /lib64/gentoo/functions.sh ?
 * /lib64/modules/<active kernel>/
@@ -54,8 +112,6 @@ cleanup:
 * /var/tmp/systemd-private-*
 * /var/lib/geoclue if geoclue is installed
 * /var/lib/gitolite/ if gitolite is installed
-* /var/lib/ip6tables/rules-save
-* /var/lib/iptables/rules-save
 * /var/lib/docker/ if Docker is installed
 * /var/cache/edb/ ?
 * /var/cache/fontconfig/ if fontconfig is installed
@@ -63,52 +119,50 @@ cleanup:
 * /var/cache/genkernel if genkernel is installed
 */
 int whitelist_check(const char *ce) {
-    return g_str_has_prefix(ce, "/usr/portage/") ||
-           g_str_equal("/usr/portage", ce) || g_str_equal("/bin/awk", ce) ||
-           g_str_equal("/bin/sh", ce) || g_str_equal("/etc/adjtime", ce) ||
-           g_str_equal("/etc/fstab", ce) || g_str_equal("/etc/group", ce) ||
-           g_str_equal("/etc/group-", ce) || g_str_equal("/etc/gshadow", ce) ||
-           g_str_equal("/etc/gshadow-", ce) ||
-           g_str_equal("/etc/password", ce) ||
-           g_str_equal("/etc/password-", ce) ||
-           g_str_equal("/etc/shadow", ce) || g_str_equal("/etc/shadow-", ce) ||
-           g_str_equal("/etc/mtab", ce) || g_str_equal("/etc/ntp.conf", ce) ||
-           g_str_equal("/etc/hostname", ce) ||
-           g_str_equal("/etc/ld.so.cache", ce) ||
-           g_str_equal("/etc/ld.so.conf", ce) ||
-           g_str_equal("/etc/ld.so.conf.d", ce) ||
-           g_str_has_prefix(ce, "/etc/ld.so.conf.d/") ||
-           g_str_equal("/etc/localtime", ce) ||
-           g_str_equal("/etc/timezone", ce) ||
-           g_str_equal("/etc/udev/hwdb.bin", ce) ||
-           g_str_equal("/etc/locale.conf", ce) ||
-           g_str_equal("/etc/prelink.conf.d/portage.conf", ce) ||
-           (g_str_has_prefix(ce, "/etc/ssh/ssh_host_") &&
-            (g_str_has_suffix(ce, "_key") ||
-             g_str_has_suffix(ce, "_key.pub"))) ||
-           g_str_equal("/lib/systemd/resolv.conf", ce) ||
-           g_str_equal("/lib32/systemd/resolv.conf", ce) ||
-           g_str_equal("/lib64/systemd/resolv.conf", ce) ||
-           g_str_equal("/lib/ld-2.27.so", ce) ||
-           g_str_equal("/lib32/ld-2.27.so", ce) ||
-           g_str_equal("/lib64/ld-2.27.so", ce) ||
-           g_str_has_prefix(ce, "/lib/ld-linux") ||
-           g_str_has_prefix(ce, "/lib32/ld-linux") ||
-           g_str_has_prefix(ce, "/lib64/ld-linux") ||
-           g_str_equal("/usr/lib/debug", ce) ||
-           g_str_equal("/usr/lib32/debug", ce) ||
-           g_str_equal("/usr/lib64/debug", ce) ||
-           (g_str_has_prefix(ce, "/usr/lib/debug") &&
-            g_str_has_suffix(ce, ".debug")) ||
-           (g_str_has_prefix(ce, "/usr/lib32/debug") &&
-            g_str_has_suffix(ce, ".debug")) ||
-           (g_str_has_prefix(ce, "/usr/lib64/debug") &&
-            g_str_has_suffix(ce, ".debug")) ||
-           g_str_has_prefix(ce, "/var/db/pkg/") ||
-           g_str_equal("/var/db/pkg", ce) ||
-           g_str_equal("/var/lib/portage", ce) ||
-           g_str_has_prefix(ce, "/var/lib/portage/") ||
-           g_str_equal("/var/lib/ntp", ce) ||
-           g_str_equal("/var/lib/ntp/ntp.drift", ce) ||
-           g_str_has_prefix(ce, "/var/lib/gentoo/news/");
+    if (prefix_re == NULL) {
+        GString *pattern = g_string_new("");
+        for (size_t i = 0, l = ARRAY_SIZE(prefixes); i < l; i++) {
+            g_string_append(
+                pattern,
+                g_regex_escape_string(prefixes[i], (gint)strlen(prefixes[i])));
+            if (i < (l - 1)) {
+                g_string_append(pattern, "|");
+            }
+        }
+        gchar *s = g_string_free(pattern, false);
+        prefix_re = g_regex_new(s, G_REGEX_ANCHORED, 0, NULL);
+        g_free(s);
+    }
+    if (filenames_re == NULL) {
+        GString *pattern = g_string_new("");
+        for (size_t i = 0, l = ARRAY_SIZE(filenames); i < l; i++) {
+            g_string_append(pattern,
+                            g_regex_escape_string(filenames[i],
+                                                  (gint)strlen(filenames[i])));
+            if (i < (l - 1)) {
+                g_string_append(pattern, "|");
+            }
+        }
+        gchar *s = g_string_free(pattern, false);
+        filenames_re = g_regex_new(s, G_REGEX_ANCHORED, 0, NULL);
+        g_free(s);
+    }
+    if (ssh_host_re == NULL) {
+        GString *pattern =
+            g_string_new("/etc/ssh/ssh_host_(?:[^_]+_)?key(?:\\.pub)?");
+        gchar *s = g_string_free(pattern, false);
+        ssh_host_re = g_regex_new(s, G_REGEX_ANCHORED, 0, NULL);
+        g_free(s);
+    }
+    if (lib_debug_re == NULL) {
+        GString *pattern = g_string_new("/usr/lib(?:32|64)?/debug.*\\.debug$");
+        gchar *s = g_string_free(pattern, false);
+        lib_debug_re = g_regex_new(s, G_REGEX_ANCHORED, 0, NULL);
+        g_free(s);
+    }
+
+    return g_regex_match(prefix_re, ce, 0, NULL) ||
+           g_regex_match(filenames_re, ce, 0, NULL) ||
+           g_regex_match(ssh_host_re, ce, 0, NULL) ||
+           g_regex_match(lib_debug_re, ce, 0, NULL);
 }
