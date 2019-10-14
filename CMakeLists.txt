@@ -33,7 +33,9 @@ set(debug_c_flags "-ggdb -O0 \
 -Wunused-label \
 -Wunused-parameter \
 -Wunused-value \
--Wunused-variable")
+-Wunused-variable \
+-Wno-language-extension-token \
+-Wno-gnu-empty-struct")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${shared_c_flags}")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${debug_c_flags}")
