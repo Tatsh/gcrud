@@ -4,6 +4,7 @@
 #include <glib-2.0/glib.h>
 #include <glib/gprintf.h>
 
+#include "array_size.h"
 #include "whitelist.h"
 
 static GHashTable *package_installed_cache = NULL;
@@ -82,6 +83,11 @@ static gboolean has_package_installed(const char *atom) {
         package_installed_cache = g_hash_table_new_full(
             (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
         g_assert_nonnull(package_installed_cache);
+    }
+
+    gpointer value;
+    if (g_hash_table_lookup_extended(package_installed_cache, atom, NULL, &value)) {
+      
     }
 
     if (g_hash_table_contains(package_installed_cache,
