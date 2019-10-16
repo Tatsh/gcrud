@@ -7,6 +7,7 @@
 #include <unistd.h>
 #endif
 
+#include "array_size.h"
 #include "colors.h"
 #include "util.h"
 
@@ -50,8 +51,7 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Finding files on system...\n");
 
-    for (unsigned int i = 0; i < sizeof(check_dirs) / sizeof(const char *);
-         i++) {
+    for (size_t i = 0; i < ARRAY_SIZE(check_dirs); i++) {
         const char *dir = check_dirs[i];
 
         struct stat s;
