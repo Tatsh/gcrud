@@ -91,11 +91,31 @@ GHashTable *find_files_in_packages(const char *base) {
     return set;
 }
 
+static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
+    GHashTableIter iter;
+    g_hash_table_iter_init(&iter, src);
+    gpointer file;
+    while (g_hash_table_iter_next(&iter, &file, NULL)) {
+        g_hash_table_add(target, file);
+    }
+}
+
+static GHashTable *g_hash_table_clone(GHashTable *src,
+                                      GHashFunc hash_func,
+                                      GEqualFunc key_equal_func) {
+    GHashTable *ret =
+        g_hash_table_new_full(hash_func, key_equal_func, NULL, NULL);
+    g_hash_table_add_all(ret, src);
+    return ret;
+}
+
 void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
+    GHashTable *snapshot = g_hash_table_clone(
+        package_files, (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal);
     GHashTableIter it;
-    gpointer file, _;
-    g_hash_table_iter_init(&it, package_files);
-    while (g_hash_table_iter_next(&it, &file, &_)) {
+    gpointer file;
+    g_hash_table_iter_init(&it, snapshot);
+    while (g_hash_table_iter_next(&it, &file, NULL)) {
         gboolean starts_with_usr_lib = g_str_has_prefix(file, "/usr/lib/");
         gboolean starts_with_lib = g_str_has_prefix(file, "/lib/");
         if (!starts_with_lib && !starts_with_usr_lib) {
@@ -116,15 +136,8 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
         g_free(prefix);
         g_free(rest);
     }
-}
 
-static void g_hash_table_add_all(GHashTable *target, GHashTable *src) {
-    GHashTableIter iter;
-    g_hash_table_iter_init(&iter, src);
-    gpointer file, _;
-    while (g_hash_table_iter_next(&iter, &file, &_)) {
-        g_hash_table_add(target, file);
-    }
+    g_hash_table_destroy(snapshot);
 }
 
 static inline gboolean should_recurse(const char *path) {
