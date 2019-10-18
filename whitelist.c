@@ -79,24 +79,19 @@ static const char *package_checks[] = {
 };
 
 static gboolean has_package_installed(const char *atom) {
-    if (package_installed_cache == NULL) {
+    gboolean cache_is_empty = package_installed_cache == NULL;
+    if (cache_is_empty) {
         package_installed_cache = g_hash_table_new_full(
-            (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+            (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, g_free, g_free);
         g_assert_nonnull(package_installed_cache);
     }
 
-    gpointer value;
-    if (g_hash_table_lookup_extended(package_installed_cache, atom, NULL, &value)) {
-      
-    }
-
-    if (g_hash_table_contains(package_installed_cache,
-                              g_strdup_printf("%s:::1", atom))) {
-        return true;
-    }
-    if (g_hash_table_contains(package_installed_cache,
-                              g_strdup_printf("%s:::0", atom))) {
-        return false;
+    gpointer value = NULL;
+    if (!cache_is_empty &&
+        g_hash_table_lookup_extended(
+            package_installed_cache, (gpointer)atom, NULL, &value) &&
+        value) {
+        return g_str_equal(value, "1");
     }
 
     bool ret = false;
@@ -127,9 +122,8 @@ cleanup:
         g_dir_close(dirp);
     }
 
-    g_hash_table_add(
-        package_installed_cache,
-        (gpointer)g_strdup_printf("%s%s", atom, ret ? ":::1" : ":::0"));
+    g_hash_table_replace(
+        package_installed_cache, (gpointer)atom, g_strdup(ret ? "1" : "0"));
 
     return ret;
 }
