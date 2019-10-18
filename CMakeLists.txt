@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 project(gcrud)
 
-set(shared_c_flags "-fno-builtin -std=gnu11")
-set(debug_c_flags "-ggdb -O0 \
--pedantic \
+add_compile_options(-fno-builtin -std=gnu11)
+set(CMAKE_C_FLAGS_DEBUG "-ggdb \
+-O0 \
 -Wall \
 -Wdeprecated-declarations \
 -Wempty-body \
@@ -34,13 +34,17 @@ set(debug_c_flags "-ggdb -O0 \
 -Wunused-parameter \
 -Wunused-value \
 -Wunused-variable \
--Wno-language-extension-token \
--Wno-gnu-empty-struct")
+-Wwrite-strings")
+add_compile_options(
+  $<$<AND:$<C_COMPILER_ID:Clang>,$<CONFIG:Debug>>:-pedantic>
+  $<$<AND:$<C_COMPILER_ID:Clang>,$<CONFIG:Debug>>:-Wno-gnu-empty-struct>
+  $<$<AND:$<C_COMPILER_ID:Clang>,$<CONFIG:Debug>>:-Wno-language-extension-token>
+  )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${shared_c_flags}")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${debug_c_flags}")
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/helper/")
+if(NOT CMAKE_MODULE_PATH)
+  set(CMAKE_MODULE_PATH)
+endif()
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/helper/")
 find_package(GLIB2 REQUIRED)
 
 add_executable(gcrud colors.c util.c whitelist.c main.c)
