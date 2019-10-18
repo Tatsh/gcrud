@@ -1,6 +1,7 @@
 {
   "[c]": {
-    "editor.defaultFormatter": "ms-vscode.cpptools"
+    "editor.defaultFormatter": "ms-vscode.cpptools",
+    "editor.tabSize": 4
   },
   "[cmake]": {
     "editor.defaultFormatter": "cheshirekow.cmake-format"
