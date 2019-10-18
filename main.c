@@ -62,10 +62,10 @@ int main(int argc, char *argv[]) {
 
         GHashTable *candidates = findwalk(dir, package_files, g_free);
         GHashTableIter iter;
-        gpointer file, _;
+        gpointer file;
 
         g_hash_table_iter_init(&iter, candidates);
-        while (g_hash_table_iter_next(&iter, &file, &_)) {
+        while (g_hash_table_iter_next(&iter, &file, NULL)) {
             g_assert_nonnull(&file);
             printf("%s\n", (gchar *)file);
         }
