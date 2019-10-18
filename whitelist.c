@@ -145,6 +145,7 @@ static gboolean whitelist_package_check(const char *ce) {
                 g_strfreev(packages);
             }
         }
+        g_strfreev(paths);
         g_strfreev(package_checks_spl);
     }
     return found;
@@ -154,11 +155,12 @@ static gboolean whitelist_re_check(const char *ce) {
     if (prefix_re == NULL) {
         GString *pattern = g_string_new("");
         for (size_t i = 0, l = ARRAY_SIZE(prefixes); i < l; i++) {
-            g_string_append(
-                pattern,
-                g_regex_escape_string(prefixes[i], (gint)strlen(prefixes[i])));
+            gchar *escaped =
+                g_regex_escape_string(prefixes[i], (gint)strlen(prefixes[i]));
+            g_string_append(pattern, escaped);
+            g_free(escaped);
             if (i < (l - 1)) {
-                g_string_append(pattern, "|");
+                g_string_append_c(pattern, '|');
             }
         }
         gchar *s = g_string_free(pattern, false);
@@ -168,11 +170,12 @@ static gboolean whitelist_re_check(const char *ce) {
     if (filenames_re == NULL) {
         GString *pattern = g_string_new("");
         for (size_t i = 0, l = ARRAY_SIZE(filenames); i < l; i++) {
-            g_string_append(pattern,
-                            g_regex_escape_string(filenames[i],
-                                                  (gint)strlen(filenames[i])));
+            gchar *escaped = g_regex_escape_string(filenames[i],
+                                                   (gint)strlen(filenames[i]));
+            g_string_append(pattern, escaped);
+            g_free(escaped);
             if (i < (l - 1)) {
-                g_string_append(pattern, "|");
+                g_string_append_c(pattern, '|');
             }
         }
         gchar *s = g_string_free(pattern, false);
