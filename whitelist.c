@@ -136,10 +136,9 @@ static gboolean whitelist_package_check(const char *ce) {
         for (size_t j = 0; paths[j] != NULL && !found; j++) {
             if (g_str_has_prefix(ce, paths[j])) {
                 gchar **packages = g_strsplit(package_checks_spl[1], "|", 2);
-                for (size_t k = 0; packages[k] != NULL; k++) {
+                for (size_t k = 0; packages[k] != NULL && !found; k++) {
                     if (has_package_installed(packages[k])) {
                         found = true;
-                        break;
                     }
                 }
                 g_strfreev(packages);
