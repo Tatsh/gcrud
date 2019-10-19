@@ -130,10 +130,10 @@ cleanup:
 
 static gboolean whitelist_package_check(const char *ce) {
     gboolean found = false;
-    for (size_t i = 0, l = ARRAY_SIZE(package_checks); i < l && !found; i++) {
+    for (size_t i = 0; i < ARRAY_SIZE(package_checks) && !found; i++) {
         gchar **package_checks_spl = g_strsplit(package_checks[i], "|", 2);
         gchar **paths = g_strsplit(package_checks_spl[0], ":", 10);
-        for (size_t j = 0; paths[j] != NULL; j++) {
+        for (size_t j = 0; paths[j] != NULL && !found; j++) {
             if (g_str_has_prefix(ce, paths[j])) {
                 gchar **packages = g_strsplit(package_checks_spl[1], "|", 2);
                 for (size_t k = 0; packages[k] != NULL; k++) {
