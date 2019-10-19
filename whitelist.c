@@ -106,10 +106,9 @@ static gboolean has_package_installed(const char *atom) {
     gchar *name = spl[1];
     const char *cent;
 
-    while ((cent = g_dir_read_name(dirp))) {
+    while ((cent = g_dir_read_name(dirp)) && !ret) {
         if (g_str_has_prefix(cent, name)) {
             ret = true;
-            break;
         }
     }
 
