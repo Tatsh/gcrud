@@ -31,6 +31,7 @@ static const char *filenames[] = {
     "/bin/sh",
     "/etc/adjtime",
     "/etc/fstab",
+    "/etc/fonts/conf.d/",
     "/etc/group",
     "/etc/group-",
     "/etc/gshadow",
@@ -219,7 +220,6 @@ static gboolean whitelist_re_check(const char *ce) {
  * TODO Candidates:
  * * Any directory with at least one .keep-* file inside if the package
  * mentioned is installed (a `qatom` implementation is required to parse this)
- * * /lib64/modules/<active kernel>/
  * * /lib64/systemd/system/ - files that derive from systemd main package
  */
 gboolean whitelist_check(const char *ce) {
