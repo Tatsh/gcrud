@@ -1,5 +1,7 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 
 #include <glib-2.0/glib.h>
 #include <glib/gprintf.h>
@@ -12,6 +14,7 @@ static GRegex *prefix_re = NULL;
 static GRegex *filenames_re = NULL;
 static GRegex *ssh_host_re = NULL;
 static GRegex *lib_debug_re = NULL;
+static GRegex *modules_re = NULL;
 // TODO Move these to a configuration file
 static const char *prefixes[] = {
     "/etc/ld.so.conf.d/",
@@ -66,6 +69,7 @@ static const char *filenames[] = {
     "/var/lib/ntp",
     "/var/lib/ntp/ntp.drift",
     "/var/lib/portage",
+    "/var/log/portage",
     "/var/tmp/portage/._unmerge_",
 };
 static const char *package_checks[] = {
@@ -193,11 +197,22 @@ static gboolean whitelist_re_check(const char *ce) {
         lib_debug_re = g_regex_new(s, G_REGEX_ANCHORED, 0, NULL);
         g_free(s);
     }
+    if (modules_re == NULL) {
+        struct utsname buf;
+        int res = uname(&buf);
+        g_assert(res == 0);
+        GString *pattern = g_string_new("/lib(?:32|64)?/modules/");
+        g_string_append(pattern, buf.release);
+        gchar *s = g_string_free(pattern, false);
+        modules_re = g_regex_new(s, G_REGEX_ANCHORED, 0, NULL);
+        g_free(s);
+    }
 
     return g_regex_match(prefix_re, ce, 0, NULL) ||
            g_regex_match(filenames_re, ce, 0, NULL) ||
            g_regex_match(ssh_host_re, ce, 0, NULL) ||
-           g_regex_match(lib_debug_re, ce, 0, NULL);
+           g_regex_match(lib_debug_re, ce, 0, NULL) ||
+           g_regex_match(modules_re, ce, 0, NULL);
 }
 
 /**
@@ -210,4 +225,13 @@ static gboolean whitelist_re_check(const char *ce) {
 gboolean whitelist_check(const char *ce) {
     return g_str_has_prefix(ce, "/var/tmp/systemd-private-") ||
            whitelist_package_check(ce) || whitelist_re_check(ce);
+}
+
+void whitelist_cleanup() {
+    g_hash_table_destroy(package_installed_cache);
+    g_regex_unref(prefix_re);
+    g_regex_unref(filenames_re);
+    g_regex_unref(ssh_host_re);
+    g_regex_unref(lib_debug_re);
+    g_regex_unref(modules_re);
 }
