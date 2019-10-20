@@ -10,6 +10,7 @@
 #include "array_size.h"
 #include "colors.h"
 #include "util.h"
+#include "whitelist.h"
 
 // TODO Move to configuration
 static const char *installed_base = "/var/db/pkg";
@@ -74,6 +75,7 @@ int main(int argc, char *argv[]) {
     }
 
     g_hash_table_destroy(package_files);
+    whitelist_cleanup();
 
     return 0;
 }
