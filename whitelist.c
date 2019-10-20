@@ -30,6 +30,7 @@ static const char *filenames[] = {
     "/bin/awk",
     "/bin/sh",
     "/etc/adjtime",
+    "/etc/crypttab",
     "/etc/fstab",
     "/etc/fonts/conf.d/",
     "/etc/group",
@@ -46,20 +47,32 @@ static const char *filenames[] = {
     "/etc/ntp.conf",
     "/etc/password",
     "/etc/password-",
+    "/etc/portage/bashrc",
+    "/etc/portage/env",
+    "/etc/portage/make.conf",
+    "/etc/portage/make.profile",
+    "/etc/portage/package.accept_keywords",
+    "/etc/portage/package.env",
+    "/etc/portage/package.mask",
+    "/etc/portage/package.use",
+    "/etc/portage/patches",
+    "/etc/portage/repos.conf",
+    "/etc/portage/savedconfig",
+    "/etc/portage/sets",
+    "/etc/profile.d",
+    "/etc/profile.env",
     "/etc/prelink.conf.d/portage.conf",
+    "/etc/resolv.conf",
     "/etc/shadow",
     "/etc/shadow-",
     "/etc/timezone",
     "/etc/udev/hwdb.bin",
     "/lib/gentoo/functions.sh",
     "/lib/ld-2.27.so",
-    "/lib/systemd/resolv.conf",
     "/lib32/gentoo/functions.sh",
     "/lib32/ld-2.27.so",
-    "/lib32/systemd/resolv.conf",
     "/lib64/gentoo/functions.sh",
     "/lib64/ld-2.27.so",
-    "/lib64/systemd/resolv.conf",
     "/usr/lib/debug",
     "/usr/lib32/debug",
     "/usr/lib64/debug",
@@ -74,13 +87,39 @@ static const char *filenames[] = {
     "/var/tmp/portage/._unmerge_",
 };
 static const char *package_checks[] = {
-    "/lib64/firmware/intel-ucode:/lib32/firmware/"
-    "intel-ucode:/lib/firmware/intel-ucode|sys-firmware/intel-microcode",
+    "/etc/dhcpcd.conf:"
+    "/etc/dhcpcd.duid:"
+    "/etc/dhcpcd.secret"
+    "|net-misc/dhcpcd",
+
+    "/lib32/firmware/intel-ucode:"
+    "/lib64/firmware/intel-ucode:"
+    "/lib/firmware/intel-ucode"
+    "|sys-firmware/intel-microcode",
+
+    "/lib32/systemd/resolv.conf:"
+    "/lib64/systemd/resolv.conf:"
+    "/lib/systemd/resolv.conf"
+    "|sys-apps/systemd",
+
+    "/var/lib/gitolite"
+    "|dev-vcs/gitolite"
+    "|dev-vcs/gitolite-gentoo",
+
+    "/etc/cups|net-print/cups",
+    "/etc/ddclient|net-dns/ddclient",
+    "/etc/eselect/wine|app-eselect/eselect-wine",
+    "/etc/rarreg.txt|app-arch/rar",
+    "/etc/sddm.conf|x11-misc/sddm",
+    "/etc/sudoers.d|app-admin/sudo",
+    "/etc/systemd|sys-apps/systemd",
+    "/etc/wgetpaste.d|app-text/wget-paste",
+    "/etc/vpnc|net-vpn/vpnc",
+    "/etc/X11|x11-base/xorg-server",
     "/var/cache/eix|app-portage/eix",
     "/var/cache/fontconfig|media-libs/fontconfig",
-    "/var/lib/docker|app-emulation/docker",
-    "/var/lib/gitolite|dev-vcs/gitolite|dev-vcs/gitolite-gentoo",
     "/var/cache/genkernel|sys-kernel/genkernel",
+    "/var/lib/docker|app-emulation/docker",
 };
 
 static gboolean has_package_installed(const char *atom) {
@@ -228,7 +267,7 @@ gboolean whitelist_check(const char *ce) {
 }
 
 void whitelist_cleanup() {
-    g_hash_table_destroy(package_installed_cache);
+    // g_hash_table_destroy(package_installed_cache);
     g_regex_unref(prefix_re);
     g_regex_unref(filenames_re);
     g_regex_unref(ssh_host_re);
