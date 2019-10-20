@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
     }
 
     g_hash_table_destroy(package_files);
+    findwalk_cleanup();
     whitelist_cleanup();
 
     return 0;

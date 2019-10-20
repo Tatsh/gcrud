@@ -1,20 +1,24 @@
-#include "util.h"
-#include "whitelist.h"
-
 #include <stdlib.h>
 
 #include <glib/gprintf.h>
+#include <libmount/libmount.h>
+
+#include "util.h"
+#include "whitelist.h"
+
+static struct libmnt_table *tb = NULL;
 
 GHashTable *find_files_in_packages(const char *base) {
-    GDir *dirp = g_dir_open(base, 0, NULL);
-    g_assert_nonnull(dirp);
     const gchar *cent, *pent;
+
+    GDir *dirp = g_dir_open(base, 0, NULL);
     GHashTable *set = g_hash_table_new_full(
         (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, NULL, g_free);
-    g_assert_nonnull(set);
-
     GRegex *sym_re = g_regex_new(
         "sym (/.+)(?= \\->)", G_REGEX_ANCHORED, G_REGEX_MATCH_ANCHORED, NULL);
+    g_assert_nonnull(dirp);
+    g_assert_nonnull(set);
+    g_assert_nonnull(sym_re);
 
     while ((cent = g_dir_read_name(dirp))) {
         gchar *pdir_path = g_strdup_printf("%s/%s", base, cent);
@@ -153,9 +157,24 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
     g_hash_table_destroy(snapshot);
 }
 
+static gboolean is_mountpoint_pseudo(const char *path) {
+    if (!tb) {
+        tb = mnt_new_table_from_file("/proc/self/mountinfo");
+        g_assert_nonnull(tb);
+        struct libmnt_cache *cache = mnt_new_cache();
+        g_assert_nonnull(cache);
+        mnt_table_set_cache(tb, cache);
+        mnt_unref_cache(cache);
+    }
+    struct libmnt_fs *fs =
+        mnt_table_find_mountpoint(tb, path, MNT_ITER_BACKWARD);
+    return fs && mnt_fs_get_target(fs) && mnt_fs_is_pseudofs(fs);
+}
+
 static inline gboolean should_recurse(const char *path) {
     return !g_file_test(path, G_FILE_TEST_IS_SYMLINK) &&
-           g_file_test(path, G_FILE_TEST_IS_DIR);
+           (g_file_test(path, G_FILE_TEST_IS_DIR) &&
+            !is_mountpoint_pseudo(path));
 }
 
 GHashTable *findwalk(const char *path,
@@ -213,4 +232,11 @@ GHashTable *findwalk(const char *path,
     g_dir_close(dir);
 
     return candidates;
+}
+
+void findwalk_cleanup() {
+    if (tb) {
+        mnt_unref_table(tb);
+        tb = NULL;
+    }
 }

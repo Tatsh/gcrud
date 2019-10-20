@@ -46,9 +46,11 @@ if(NOT CMAKE_MODULE_PATH)
 endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/helper/")
 find_package(GLIB2 REQUIRED)
+find_package(Libmount REQUIRED)
 
 add_executable(gcrud colors.c util.c whitelist.c main.c)
-target_include_directories(gcrud PRIVATE ${GLIB2_INCLUDE_DIRS})
-target_link_libraries(gcrud ${GLIB2_LIBRARIES})
+target_include_directories(gcrud
+                           PRIVATE ${GLIB2_INCLUDE_DIRS} ${MOUNT_INCLUDE_DIRS})
+target_link_libraries(gcrud ${GLIB2_LIBRARIES} ${MOUNT_LIBRARIES})
 
 install(TARGETS gcrud RUNTIME DESTINATION bin)
