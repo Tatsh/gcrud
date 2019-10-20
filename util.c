@@ -13,6 +13,9 @@ GHashTable *find_files_in_packages(const char *base) {
         (GHashFunc)g_str_hash, (GEqualFunc)g_str_equal, NULL, g_free);
     g_assert_nonnull(set);
 
+    GRegex *sym_re = g_regex_new(
+        "sym (/.+)(?= \\->)", G_REGEX_ANCHORED, G_REGEX_MATCH_ANCHORED, NULL);
+
     while ((cent = g_dir_read_name(dirp))) {
         gchar *pdir_path = g_strdup_printf("%s/%s", base, cent);
         GDir *pdir = g_dir_open(pdir_path, 0, NULL);
@@ -32,32 +35,42 @@ GHashTable *find_files_in_packages(const char *base) {
                 g_assert(status == G_IO_STATUS_NORMAL);
                 gchar *type = g_strndup(line, 3);
                 g_assert(type[0] != '/');
+                gchar *path = NULL;
+                gchar *rpath = NULL;
 
-                gchar **sp = g_strsplit(line + 4, " ", 2);
-                gchar *path = g_strdup(sp[0]);
-                path = g_strstrip(path);
-                g_assert(path[0] == '/');
-
-                const gboolean is_sym = g_str_equal("sym", type);
-                char *resolved_path = NULL;
-
-                if (is_sym) {
-                    resolved_path = realpath(path, NULL);
-                    if (!resolved_path) {
+                if (g_str_equal(type, "dir")) {
+                    path = g_strstrip(g_strdup(line + 4));
+                } else if (g_str_equal(type, "sym")) {
+                    GMatchInfo *match_info;
+                    g_regex_match(sym_re, line, 0, &match_info);
+                    g_assert(g_match_info_matches(match_info));
+                    path = g_match_info_fetch(match_info, 1);
+                    g_assert_nonnull(path);
+                    g_match_info_free(match_info);
+                    rpath = realpath(path, NULL);
+                    if (!rpath) {
                         g_free(path);
                         goto cleanup;
                     }
+                } else {
+                    size_t end_index = strlen(line);
+                    for (size_t space_count = 0;
+                         end_index >= 0 && space_count < 2;
+                         end_index--) {
+                        if (line[end_index] == ' ') {
+                            space_count++;
+                        }
+                    }
+                    path = g_strndup(line + 4, end_index - 3);
                 }
+                g_assert(path[0] == '/');
 
                 g_hash_table_add(set, path);
-                gchar *rpath = NULL;
-                if (is_sym && resolved_path) {
-                    rpath = g_strdup(resolved_path);
-                    free(resolved_path);
+                if (rpath) {
                     g_hash_table_add(set, rpath);
                 }
 
-                if ((g_str_equal("obj", type) || is_sym) &&
+                if ((g_str_equal("obj", type) || rpath) &&
                     g_str_has_suffix(path, ".py")) {
                     gchar *py_compiled_type = g_strdup_printf("%sc", path);
                     g_hash_table_add(set, py_compiled_type);
@@ -75,7 +88,6 @@ GHashTable *find_files_in_packages(const char *base) {
             cleanup:
                 g_free(type);
                 g_free(line);
-                g_strfreev(sp);
             }
 
             g_io_channel_unref(cfile);
@@ -86,6 +98,7 @@ GHashTable *find_files_in_packages(const char *base) {
         g_free(pdir_path);
     }
 
+    g_regex_unref(sym_re);
     g_dir_close(dirp);
 
     return set;
