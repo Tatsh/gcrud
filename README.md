@@ -10,8 +10,7 @@
 6. `make`
 7. `sudo ./gcrud | sort -u > out.log`
 
-View `out.log` and check out things you *might* be able to remove. The whitelist is a work in progress. See [`whitelist.c`'s `whitelist_check()`](whitelist.c#L6) function.
-
+View `out.log` and check out things you _might_ be able to remove. The whitelist is a work in progress. See [`whitelist.c`'s `whitelist_check()`](whitelist.c#L6) function.
 
 ## Contributing
 
