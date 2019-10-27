@@ -10,11 +10,11 @@
 #include "whitelist.h"
 
 static GHashTable *package_installed_cache = NULL;
-static GRegex *prefix_re = NULL;
 static GRegex *filenames_re = NULL;
-static GRegex *ssh_host_re = NULL;
 static GRegex *lib_debug_re = NULL;
 static GRegex *modules_re = NULL;
+static GRegex *prefix_re = NULL;
+static GRegex *ssh_host_re = NULL;
 // TODO Move these to a configuration file
 static const char *prefixes[] = {
     "/etc/ld.so.conf.d/",
