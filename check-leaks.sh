@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-set -e
-
 rm -fR build2
 mkdir build2
-cd build2
+cd build2 || exit 1
 cmake .. -DCMAKE_BUILD_TYPE=Debug -G 'Unix Makefiles'
 make
 valgrind \
@@ -12,5 +10,5 @@ valgrind \
     --show-leak-kinds=definite \
     --suppressions=../gcrud.supp \
     ./gcrud
-cd ..
+cd .. || exit 1
 rm -fR build2
