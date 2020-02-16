@@ -6,6 +6,33 @@
   "[cmake]": {
     "editor.defaultFormatter": "cheshirekow.cmake-format"
   },
+  "cSpell.ignoreWords": [
+    "alloc",
+    "build",
+    "calloc",
+    "cpath",
+    "dcmake",
+    "gboolean",
+    "gchar",
+    "gcrud",
+    "gint",
+    "gmock",
+    "gshadow",
+    "gtest",
+    "iwyu",
+    "logv",
+    "makefiles",
+    "memcheck",
+    "parens",
+    "pdir",
+    "pseudofs",
+    "strdup",
+    "strfreev",
+    "type",
+    "udev",
+    "unref",
+    "valgrind"
+  ],
   "cmake.configureOnOpen": true,
   "editor.formatOnSave": true
 }
