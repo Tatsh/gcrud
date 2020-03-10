@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: install deps
+      run: apt-get install -y libglib2.0-dev libmount-dev
     - name: build dir
       run: mkdir build
     - name: cmake
