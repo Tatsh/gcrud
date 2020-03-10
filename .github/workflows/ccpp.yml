@@ -1,0 +1,19 @@
+name: C CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: build dir
+      run: mkdir build
+    - name: cmake
+      run: cmake -B build
+    - name: make
+      run: make -C build
