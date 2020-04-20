@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdlib.h>
 
 #include <glib/gprintf.h>
@@ -210,7 +211,22 @@ GHashTable *findwalk(const char *path,
         // Whitelist and package_files check
         if (!g_hash_table_contains((GHashTable *)package_files, ce) &&
             !whitelist_check(ce)) {
-            g_hash_table_add(candidates, ce);
+            if (g_file_test(ce, G_FILE_TEST_IS_SYMLINK)) {
+                char *resolved_path = realpath(ce, NULL);
+                if (resolved_path == NULL) {
+                    // dead link
+                    g_hash_table_add(candidates, ce);
+                } else {
+                    if (!g_hash_table_contains((GHashTable *)package_files,
+                                               resolved_path) &&
+                        !whitelist_check(resolved_path)) {
+                        g_hash_table_add(candidates, ce);
+                    }
+                    free(resolved_path);
+                }
+            } else {
+                g_hash_table_add(candidates, ce);
+            }
         } else {
             clean_up_ce = TRUE;
         }
