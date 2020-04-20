@@ -61,7 +61,8 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        GHashTable *candidates = findwalk(dir, package_files, g_free);
+        struct findwalk_data fw = {dir, package_files, g_free};
+        GHashTable *candidates = findwalk(&fw);
         GHashTableIter iter;
         gpointer file;
 
