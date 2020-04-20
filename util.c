@@ -8,6 +8,7 @@
 #include "whitelist.h"
 
 static struct libmnt_table *tb = NULL;
+G_LOCK_DEFINE_STATIC(tb);
 
 GHashTable *find_files_in_packages(const char *base) {
     const gchar *cent, *pent;
@@ -158,15 +159,21 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
     g_hash_table_destroy(snapshot);
 }
 
-static gboolean is_mountpoint_pseudo(const char *path) {
+static inline void initialize_tb() {
     if (!tb) {
+        G_LOCK(tb);
         tb = mnt_new_table_from_file("/proc/self/mountinfo");
         g_assert_nonnull(tb);
         struct libmnt_cache *cache = mnt_new_cache();
         g_assert_nonnull(cache);
         mnt_table_set_cache(tb, cache);
         mnt_unref_cache(cache);
+        G_UNLOCK(tb);
     }
+}
+
+static gboolean is_mountpoint_pseudo(const char *path) {
+    initialize_tb();
     struct libmnt_fs *fs =
         mnt_table_find_mountpoint(tb, path, MNT_ITER_BACKWARD);
     return fs && mnt_fs_get_target(fs) && mnt_fs_is_pseudofs(fs);
