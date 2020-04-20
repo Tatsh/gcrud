@@ -185,16 +185,14 @@ static inline gboolean should_recurse(const char *path) {
             !is_mountpoint_pseudo(path));
 }
 
-GHashTable *findwalk(const char *path,
-                     const GHashTable *package_files,
-                     GDestroyNotify value_destroy_func) {
+GHashTable *findwalk(const findwalk_data_t *fw) {
     GHashTable *candidates = g_hash_table_new_full((GHashFunc)g_str_hash,
                                                    (GEqualFunc)g_str_equal,
                                                    NULL,
-                                                   value_destroy_func);
+                                                   fw->value_destroy_func);
     g_assert_nonnull(candidates);
 
-    GDir *dir = g_dir_open(path, 0, NULL);
+    GDir *dir = g_dir_open(fw->path, 0, NULL);
 #ifdef NDEBUG
     g_assert_nonnull(dir);
 #else
@@ -205,7 +203,7 @@ GHashTable *findwalk(const char *path,
 #endif
     const char *cdir;
     while ((cdir = g_dir_read_name(dir))) {
-        gchar *ce = g_strdup_printf("%s/%s", path, cdir);
+        gchar *ce = g_strdup_printf("%s/%s", fw->path, cdir);
         if (!ce) {
             g_fprintf(stderr,
                       "Unexpected return value from g_strdup_printf(). "
@@ -216,7 +214,7 @@ GHashTable *findwalk(const char *path,
         gboolean clean_up_ce = FALSE;
 
         // Whitelist and package_files check
-        if (!g_hash_table_contains((GHashTable *)package_files, ce) &&
+        if (!g_hash_table_contains(fw->package_files, ce) &&
             !whitelist_check(ce)) {
             if (g_file_test(ce, G_FILE_TEST_IS_SYMLINK)) {
                 char *resolved_path = realpath(ce, NULL);
@@ -224,7 +222,7 @@ GHashTable *findwalk(const char *path,
                     // dead link
                     g_hash_table_add(candidates, ce);
                 } else {
-                    if (!g_hash_table_contains((GHashTable *)package_files,
+                    if (!g_hash_table_contains(fw->package_files,
                                                resolved_path) &&
                         !whitelist_check(resolved_path)) {
                         g_hash_table_add(candidates, ce);
@@ -242,7 +240,8 @@ GHashTable *findwalk(const char *path,
         if (should_recurse(ce)) {
             // On recursion do not set a key destroy function because the
             // top hash table already has one
-            GHashTable *next = findwalk(ce, package_files, NULL);
+            struct findwalk_data fw_ = {ce, fw->package_files, NULL};
+            GHashTable *next = findwalk(&fw_);
             g_hash_table_add_all(candidates, next);
             g_hash_table_destroy(next);
         }
