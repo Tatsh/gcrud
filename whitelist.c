@@ -25,6 +25,7 @@ static const char *prefixes[] = {
     "/var/db/pkg/",
     "/var/lib/gentoo/news/",
     "/var/lib/portage/",
+    "/var/db/repos/gentoo",
 };
 static const char *filenames[] = {
     "/bin/awk",
