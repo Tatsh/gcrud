@@ -7,9 +7,6 @@
 #include "util.h"
 #include "whitelist.h"
 
-static struct libmnt_table *tb = NULL;
-G_LOCK_DEFINE_STATIC(tb);
-
 GHashTable *find_files_in_packages(const char *base) {
     const gchar *cent, *pent;
 
@@ -159,30 +156,16 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
     g_hash_table_destroy(snapshot);
 }
 
-static inline void initialize_tb() {
-    if (!tb) {
-        G_LOCK(tb);
-        tb = mnt_new_table_from_file("/proc/self/mountinfo");
-        g_assert_nonnull(tb);
-        struct libmnt_cache *cache = mnt_new_cache();
-        g_assert_nonnull(cache);
-        mnt_table_set_cache(tb, cache);
-        mnt_unref_cache(cache);
-        G_UNLOCK(tb);
-    }
-}
-
-static gboolean is_mountpoint_pseudo(const char *path) {
-    initialize_tb();
+static gboolean is_mountpoint_pseudo(struct libmnt_table *tb, const char *path) {
     struct libmnt_fs *fs =
         mnt_table_find_mountpoint(tb, path, MNT_ITER_BACKWARD);
     return fs && mnt_fs_get_target(fs) && mnt_fs_is_pseudofs(fs);
 }
 
-static inline gboolean should_recurse(const char *path) {
+static inline gboolean should_recurse(struct libmnt_table *tb, const char *path) {
     return !g_file_test(path, G_FILE_TEST_IS_SYMLINK) &&
            (g_file_test(path, G_FILE_TEST_IS_DIR) &&
-            !is_mountpoint_pseudo(path));
+            !is_mountpoint_pseudo(tb, path));
 }
 
 GHashTable *findwalk(const findwalk_data_t *fw) {
@@ -237,10 +220,10 @@ GHashTable *findwalk(const findwalk_data_t *fw) {
         }
 
         // Recurse if the entry is a directory
-        if (should_recurse(ce)) {
+        if (should_recurse(fw->mnt_table, ce)) {
             // On recursion do not set a key destroy function because the
             // top hash table already has one
-            struct findwalk_data fw_ = {ce, fw->package_files, NULL};
+            struct findwalk_data fw_ = {ce, fw->package_files, NULL, fw->mnt_table};
             GHashTable *next = findwalk(&fw_);
             g_hash_table_add_all(candidates, next);
             g_hash_table_destroy(next);
@@ -254,11 +237,4 @@ GHashTable *findwalk(const findwalk_data_t *fw) {
     g_dir_close(dir);
 
     return candidates;
-}
-
-void findwalk_cleanup() {
-    if (tb) {
-        mnt_unref_table(tb);
-        tb = NULL;
-    }
 }

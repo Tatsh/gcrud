@@ -7,6 +7,7 @@ typedef struct findwalk_data {
     const char *path;
     GHashTable *package_files;
     GDestroyNotify value_destroy_func;
+    struct libmnt_table *mnt_table;
 } findwalk_data_t;
 
 extern void apply_lib_mapping(GHashTable *, const char *)

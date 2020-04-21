@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <sys/stat.h>
-
 #ifdef NDEBUG
 // For geteuid()
 #include <sys/types.h>
 #include <unistd.h>
 #endif
+
+#include <libmount/libmount.h>
 
 #include "array_size.h"
 #include "colors.h"
@@ -28,6 +29,16 @@ static const char *check_dirs[] = {
     "/var",
 };
 
+static inline struct libmnt_table *get_mountinfo_table() {
+    struct libmnt_table *tb = mnt_new_table_from_file("/proc/self/mountinfo");
+    g_assert_nonnull(tb);
+    struct libmnt_cache *cache = mnt_new_cache();
+    g_assert_nonnull(cache);
+    mnt_table_set_cache(tb, cache);
+    mnt_unref_cache(cache);
+    return tb;
+}
+
 int main(int argc, char *argv[]) {
     if (argc == 2 &&
         (g_str_equal(argv[1], "-v") || g_str_equal(argv[1], "--version"))) {
@@ -49,7 +60,7 @@ int main(int argc, char *argv[]) {
     if (!g_str_equal(libmap, "lib")) {
         apply_lib_mapping(package_files, libmap);
     }
-
+    struct libmnt_table *tb = get_mountinfo_table();
     fprintf(stderr, "Finding files on system...\n");
 
     for (size_t i = 0; i < ARRAY_SIZE(check_dirs); i++) {
@@ -61,7 +72,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        struct findwalk_data fw = {dir, package_files, g_free};
+        struct findwalk_data fw = {dir, package_files, g_free, tb};
         GHashTable *candidates = findwalk(&fw);
         GHashTableIter iter;
         gpointer file;
@@ -76,7 +87,6 @@ int main(int argc, char *argv[]) {
     }
 
     g_hash_table_destroy(package_files);
-    findwalk_cleanup();
     whitelist_cleanup();
 
     return 0;
