@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
 project(gcrud)
 
-add_compile_options(-fno-builtin -std=gnu11)
+add_compile_options(-fno-builtin -std=gnu18)
 set(CMAKE_C_FLAGS_DEBUG "-ggdb \
 -O0 \
 -Wall \
@@ -41,16 +41,14 @@ add_compile_options(
   $<$<AND:$<C_COMPILER_ID:Clang>,$<CONFIG:Debug>>:-Wno-language-extension-token>
   )
 
-if(NOT CMAKE_MODULE_PATH)
-  set(CMAKE_MODULE_PATH)
-endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/helper/")
+
 find_package(GLIB2 REQUIRED)
 find_package(Libmount REQUIRED)
 
 add_executable(gcrud colors.c util.c whitelist.c main.c)
 target_include_directories(gcrud
                            PRIVATE ${GLIB2_INCLUDE_DIRS} ${MOUNT_INCLUDE_DIRS})
-target_link_libraries(gcrud ${GLIB2_LIBRARIES} ${MOUNT_LIBRARIES})
+target_link_libraries(gcrud PRIVATE ${GLIB2_LIBRARIES} ${MOUNT_LIBRARIES})
 
 install(TARGETS gcrud RUNTIME DESTINATION bin)
