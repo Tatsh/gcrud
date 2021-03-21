@@ -113,7 +113,8 @@ static const char *package_checks[] = {
     "/etc/rarreg.txt|app-arch/rar",
     "/etc/sddm.conf|x11-misc/sddm",
     "/etc/sudoers.d|app-admin/sudo",
-    "/etc/systemd|sys-apps/systemd",
+    "/etc/systemd:/var/lib/systemd:/var/log/journal:/var/.updated:"
+    "/etc/.updated|sys-apps/systemd",
     "/etc/wgetpaste.d|app-text/wget-paste",
     "/etc/vpnc|net-vpn/vpnc",
     "/etc/X11|x11-base/xorg-server",
@@ -121,6 +122,8 @@ static const char *package_checks[] = {
     "/var/cache/fontconfig|media-libs/fontconfig",
     "/var/cache/genkernel|sys-kernel/genkernel",
     "/var/lib/docker|app-emulation/docker",
+    "/var/lib/sddm/.cache:/var/lib/sddm/.nv|x11-misc/sddm",
+    "/var/lib/upkeep|app-portage/upkeep",
 };
 
 static gboolean has_package_installed(const char *atom) {

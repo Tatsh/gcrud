@@ -156,13 +156,15 @@ void apply_lib_mapping(GHashTable *package_files, const char *libmap) {
     g_hash_table_destroy(snapshot);
 }
 
-static gboolean is_mountpoint_pseudo(struct libmnt_table *tb, const char *path) {
+static gboolean is_mountpoint_pseudo(struct libmnt_table *tb,
+                                     const char *path) {
     struct libmnt_fs *fs =
         mnt_table_find_mountpoint(tb, path, MNT_ITER_BACKWARD);
     return fs && mnt_fs_get_target(fs) && mnt_fs_is_pseudofs(fs);
 }
 
-static inline gboolean should_recurse(struct libmnt_table *tb, const char *path) {
+static inline gboolean should_recurse(struct libmnt_table *tb,
+                                      const char *path) {
     return !g_file_test(path, G_FILE_TEST_IS_SYMLINK) &&
            (g_file_test(path, G_FILE_TEST_IS_DIR) &&
             !is_mountpoint_pseudo(tb, path));
@@ -223,7 +225,8 @@ GHashTable *findwalk(const findwalk_data_t *fw) {
         if (should_recurse(fw->mnt_table, ce)) {
             // On recursion do not set a key destroy function because the
             // top hash table already has one
-            struct findwalk_data fw_ = {ce, fw->package_files, NULL, fw->mnt_table};
+            struct findwalk_data fw_ = {
+                ce, fw->package_files, NULL, fw->mnt_table};
             GHashTable *next = findwalk(&fw_);
             g_hash_table_add_all(candidates, next);
             g_hash_table_destroy(next);
