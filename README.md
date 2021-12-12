@@ -1,5 +1,9 @@
 # gcrud - A Gentoo maintenance tool
 
+## Abandoned
+
+Abandoned in favour of [portage-lostfiles](https://github.com/gcarq/portage-lostfiles).
+
 ## How to use
 
 1. `git clone ...`
